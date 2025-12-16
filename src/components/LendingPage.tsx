@@ -347,23 +347,6 @@ export function LendingPage() {
               ))}
             </div>
 
-            {/* 说明卡片 */}
-            <Card className="bg-gradient-to-br from-blue-500/10 to-transparent border-blue-500/20">
-              <div className="p-6">
-                <div className="flex gap-4">
-                  <Info className="w-6 h-6 text-blue-400 flex-shrink-0" />
-                  <div>
-                    <h3 className="text-white font-semibold mb-2">如何使用借贷服务</h3>
-                    <ul className="text-white/70 text-sm space-y-2">
-                      <li>• <strong>供应资产</strong>: 存入加密货币资产，自动开始赚取利息</li>
-                      <li>• <strong>抵押借款</strong>: 使用您的资产作为抵押，借出其他币种</li>
-                      <li>• <strong>随时提取</strong>: 供应的资产可随时提取，无锁定期</li>
-                      <li>• <strong>安全保障</strong>: 智能合约审计，资金池保险，清算机制保护</li>
-                    </ul>
-                  </div>
-                </div>
-              </div>
-            </Card>
           </TabsContent>
 
           {/* 我的仓位 */}
