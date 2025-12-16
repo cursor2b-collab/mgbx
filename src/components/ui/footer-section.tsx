@@ -2,12 +2,10 @@
 import React from 'react';
 import type { ComponentProps, ReactNode } from 'react';
 import { motion, useReducedMotion } from 'motion/react';
-import { FacebookIcon, FrameIcon, InstagramIcon, LinkedinIcon, YoutubeIcon } from 'lucide-react';
 
 interface FooterLink {
 	title: string;
 	href: string;
-	icon?: React.ComponentType<{ className?: string }>;
 }
 
 interface FooterSection {
@@ -17,39 +15,30 @@ interface FooterSection {
 
 const footerLinks: FooterSection[] = [
 	{
-		label: 'Product',
+		label: '关于我们',
 		links: [
-			{ title: 'Features', href: '#features' },
-			{ title: 'Pricing', href: '#pricing' },
-			{ title: 'Testimonials', href: '#testimonials' },
-			{ title: 'Integration', href: '/' },
+			{ title: '用户协议', href: '/terms' },
+			{ title: '隐私保护', href: '/privacy' },
+			{ title: '商务合作', href: '/cooperation' },
 		],
 	},
 	{
-		label: 'Company',
+		label: '产品',
 		links: [
-			{ title: 'FAQs', href: '/faqs' },
-			{ title: 'About Us', href: '/about' },
-			{ title: 'Privacy Policy', href: '/privacy' },
-			{ title: 'Terms of Services', href: '/terms' },
+			{ title: '买币', href: '/buy' },
+			{ title: '现货', href: '/spot' },
+			{ title: '合约', href: '/futures' },
+			{ title: '跟单', href: '/copy-trading' },
+			{ title: '理财', href: '/wealth' },
 		],
 	},
 	{
-		label: 'Resources',
+		label: '服务',
 		links: [
-			{ title: 'Blog', href: '/blog' },
-			{ title: 'Changelog', href: '/changelog' },
-			{ title: 'Brand', href: '/brand' },
-			{ title: 'Help', href: '/help' },
-		],
-	},
-	{
-		label: 'Social Links',
-		links: [
-			{ title: 'Facebook', href: '#', icon: FacebookIcon },
-			{ title: 'Instagram', href: '#', icon: InstagramIcon },
-			{ title: 'Youtube', href: '#', icon: YoutubeIcon },
-			{ title: 'LinkedIn', href: '#', icon: LinkedinIcon },
+			{ title: '费率说明', href: '/fees' },
+			{ title: '常见问题', href: '/faq' },
+			{ title: '官方验证通道', href: '/verify' },
+			{ title: '上币申请', href: '/listing' },
 		],
 	},
 ];
@@ -69,25 +58,28 @@ export function Footer() {
 
 			<div className="grid w-full gap-8 xl:grid-cols-3 xl:gap-8">
 				<AnimatedContainer className="space-y-4">
-					<FrameIcon className="size-8 text-white" />
+					<img 
+						src="https://cy-747263170.imgix.net/logo.1730b8a9.gif" 
+						alt="MGBX Logo" 
+						className="h-8 w-auto"
+					/>
 					<p className="text-gray-400 mt-8 text-sm md:mt-0">
 						© {new Date().getFullYear()} MGBX. All rights reserved.
 					</p>
 				</AnimatedContainer>
 
-				<div className="mt-10 grid grid-cols-2 gap-8 md:grid-cols-4 xl:col-span-2 xl:mt-0">
+				<div className="mt-10 grid grid-cols-3 gap-8 xl:col-span-2 xl:mt-0">
 					{footerLinks.map((section, index) => (
 						<AnimatedContainer key={section.label} delay={0.1 + index * 0.1}>
 							<div className="mb-10 md:mb-0">
-								<h3 className="text-xs text-white font-semibold">{section.label}</h3>
-								<ul className="text-gray-400 mt-4 space-y-2 text-sm">
+								<h3 className="text-sm text-white font-semibold mb-4">{section.label}</h3>
+								<ul className="text-gray-400 space-y-2 text-sm">
 									{section.links.map((link) => (
 										<li key={link.title}>
 											<a
 												href={link.href}
-												className="hover:text-white inline-flex items-center transition-all duration-300"
+												className="hover:text-white transition-all duration-300"
 											>
-												{link.icon && <link.icon className="me-1 size-4" />}
 												{link.title}
 											</a>
 										</li>
