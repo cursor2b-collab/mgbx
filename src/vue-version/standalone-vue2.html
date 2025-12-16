@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>加密货币交易所 - 登录注册 (Vue 2)</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <style>
+    /* 全局样式 */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      overflow: hidden;
+      background: black;
+    }
+    
+    /* 自定义字体 */
+    h1 {
+      font-size: 2.5rem;
+      font-weight: 700;
+      line-height: 1.1;
+      letter-spacing: -0.025em;
+      color: white;
+    }
+    
+    /* Vue 过渡动画 */
+    .slide-left-enter-active,
+    .slide-left-leave-active {
+      transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
+    .slide-left-enter {
+      opacity: 0;
+      transform: translateX(100px);
+    }
+    
+    .slide-left-leave-to {
+      opacity: 0;
+      transform: translateX(-100px);
+    }
+    
+    .slide-down-enter-active,
+    .slide-down-leave-active {
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
+    .slide-down-enter {
+      opacity: 0;
+      transform: translateY(-10px);
+    }
+    
+    .slide-down-leave-to {
+      opacity: 0;
+      transform: translateY(-10px);
+    }
+    
+    /* 成功动画 */
+    @keyframes scale-in {
+      from {
+        transform: scale(0.8);
+        opacity: 0;
+      }
+      to {
+        transform: scale(1);
+        opacity: 1;
+      }
+    }
+    
+    .animate-scale-in {
+      animation: scale-in 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
+    /* 输入框样式 */
+    input::-webkit-outer-spin-button,
+    input::-webkit-inner-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+    
+    input[type=number] {
+      -moz-appearance: textfield;
+    }
+    
+    input::placeholder {
+      color: rgba(255, 255, 255, 0.4);
+    }
+    
+    /* 按钮悬停效果 */
+    .nav-link {
+      position: relative;
+      display: inline-block;
+      overflow: hidden;
+      height: 1.25rem;
+    }
+    
+    .nav-link-inner {
+      display: flex;
+      flex-direction: column;
+      transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
+    .nav-link:hover .nav-link-inner {
+      transform: translateY(-50%);
+    }
+    
+    /* 导航栏圆角过渡 */
+    .header-shape {
+      transition: border-radius 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
+    /* 自定义渐变 */
+    .gradient-glow {
+      position: absolute;
+      inset: 0;
+      margin: -0.5rem;
+      border-radius: 9999px;
+      background: rgba(243, 244, 246, 0.4);
+      filter: blur(1rem);
+      pointer-events: none;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
+    .gradient-glow-hover:hover .gradient-glow {
+      opacity: 0.6;
+      filter: blur(1.5rem);
+      margin: -0.75rem;
+    }
+    
+    /* 隐藏滚动条 */
+    body::-webkit-scrollbar {
+      display: none;
+    }
+    
+    body {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+    
+    /* 确保全屏 */
+    html, body, #app {
+      width: 100%;
+      height: 100%;
+    }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+
+  <!-- Vue 2 CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js"></script>
+  
+  <script>
+    // ==================== Canvas 粒子类 ====================
+    class Dot {
+      constructor(x, y, vx, vy, radius, opacity, color) {
+        this.x = x;
+        this.y = y;
+        this.vx = vx;
+        this.vy = vy;
+        this.radius = radius;
+        this.opacity = opacity;
+        this.color = color;
+      }
+      
+      draw(ctx) {
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(${this.color[0]}, ${this.color[1]}, ${this.color[2]}, ${this.opacity})`;
+        ctx.fill();
+      }
+      
+      update(width, height, reverse) {
+        const speed = reverse ? -1 : 1;
+        this.x += this.vx * speed;
+        this.y += this.vy * speed;
+        
+        if (this.x < 0 || this.x > width) this.vx *= -1;
+        if (this.y < 0 || this.y > height) this.vy *= -1;
+        
+        this.x = Math.max(0, Math.min(width, this.x));
+        this.y = Math.max(0, Math.min(height, this.y));
+      }
+    }
+    
+    new Vue({
+      el: '#app',
+      
+      data: {
+        // 步骤状态
+        step: 'email',
+        
+        // 表单数据
+        email: '',
+        code: ['', '', '', '', '', ''],
+        
+        // 错误信息
+        emailError: '',
+        codeError: '',
+        
+        // Canvas 可见性
+        initialCanvasVisible: false,
+        reverseCanvasVisible: false,
+        
+        // UI 状态
+        isMenuOpen: false,
+        headerShapeClass: 'rounded-full',
+        resendCooldown: 0,
+        
+        // 导航链接
+        navLinks: [
+          { label: '关于我们', href: '#1' },
+          { label: '招聘', href: '#2' },
+          { label: '发现', href: '#3' },
+        ],
+        
+        // Canvas 动画数据
+        initialDots: [],
+        reverseDots: [],
+        initialAnimationId: null,
+        reverseAnimationId: null,
+        
+        // 定时器
+        resendTimer: null,
+        shapeTimeout: null,
+      },
+      
+      computed: {
+        isCodeComplete() {
+          return this.code.every(d => d !== '');
+        }
+      },
+      
+      watch: {
+        isMenuOpen(newValue) {
+          if (this.shapeTimeout) {
+            clearTimeout(this.shapeTimeout);
+          }
+          
+          if (newValue) {
+            this.headerShapeClass = 'rounded-xl';
+          } else {
+            this.shapeTimeout = setTimeout(() => {
+              this.headerShapeClass = 'rounded-full';
+            }, 300);
+          }
+        },
+        
+        reverseCanvasVisible(newValue) {
+          if (newValue) {
+            this.$nextTick(() => {
+              this.setupCanvas(this.$refs.reverseCanvas, true);
+            });
+          } else {
+            if (this.reverseAnimationId) {
+              cancelAnimationFrame(this.reverseAnimationId);
+              this.reverseAnimationId = null;
+            }
+          }
+        },
+        
+        initialCanvasVisible(newValue) {
+          if (newValue) {
+            this.$nextTick(() => {
+              this.setupCanvas(this.$refs.initialCanvas, false);
+            });
+          } else {
+            if (this.initialAnimationId) {
+              cancelAnimationFrame(this.initialAnimationId);
+              this.initialAnimationId = null;
+            }
+          }
+        }
+      },
+      
+      mounted() {
+        this.initialCanvasVisible = true;
+        
+        this.$nextTick(() => {
+          this.setupCanvas(this.$refs.initialCanvas, false);
+        });
+        
+        window.addEventListener('resize', this.handleResize);
+      },
+      
+      beforeDestroy() {
+        window.removeEventListener('resize', this.handleResize);
+        
+        if (this.initialAnimationId) {
+          cancelAnimationFrame(this.initialAnimationId);
+        }
+        if (this.reverseAnimationId) {
+          cancelAnimationFrame(this.reverseAnimationId);
+        }
+        if (this.resendTimer) {
+          clearInterval(this.resendTimer);
+        }
+        if (this.shapeTimeout) {
+          clearTimeout(this.shapeTimeout);
+        }
+      },
+      
+      methods: {
+        // ==================== Canvas 动画方法 ====================
+        createDots(width, height, animationSpeed = 3, dotSize = 6) {
+          const dots = [];
+          const numDots = Math.floor((width * height) / 10000) * 2;
+          const opacities = [0.3, 0.3, 0.3, 0.5, 0.5, 0.5, 0.8, 0.8, 0.8, 1];
+          const color = [255, 255, 255];
+          
+          for (let i = 0; i < numDots; i++) {
+            const x = Math.random() * width;
+            const y = Math.random() * height;
+            const vx = (Math.random() - 0.5) * (animationSpeed / 10);
+            const vy = (Math.random() - 0.5) * (animationSpeed / 10);
+            const radius = dotSize * (0.5 + Math.random() * 0.5);
+            const opacity = opacities[Math.floor(Math.random() * opacities.length)];
+            
+            dots.push(new Dot(x, y, vx, vy, radius, opacity, color));
+          }
+          
+          return dots;
+        },
+        
+        animateCanvas(canvas, dots, reverse) {
+          const ctx = canvas.getContext('2d');
+          if (!ctx) return;
+          
+          const animate = () => {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            dots.forEach(dot => {
+              dot.update(canvas.width, canvas.height, reverse);
+              dot.draw(ctx);
+            });
+            
+            const id = requestAnimationFrame(animate);
+            if (reverse) {
+              this.reverseAnimationId = id;
+            } else {
+              this.initialAnimationId = id;
+            }
+          };
+          
+          animate();
+        },
+        
+        setupCanvas(canvas, reverse = false) {
+          if (!canvas) return;
+          
+          const parent = canvas.parentElement;
+          if (!parent) return;
+          
+          canvas.width = parent.clientWidth;
+          canvas.height = parent.clientHeight;
+          
+          if (reverse) {
+            this.reverseDots = this.createDots(canvas.width, canvas.height, 4, 6);
+            this.animateCanvas(canvas, this.reverseDots, true);
+          } else {
+            this.initialDots = this.createDots(canvas.width, canvas.height, 3, 6);
+            this.animateCanvas(canvas, this.initialDots, false);
+          }
+        },
+        
+        handleResize() {
+          if (this.$refs.initialCanvas && this.initialCanvasVisible) {
+            this.setupCanvas(this.$refs.initialCanvas, false);
+          }
+          if (this.$refs.reverseCanvas && this.reverseCanvasVisible) {
+            this.setupCanvas(this.$refs.reverseCanvas, true);
+          }
+        },
+        
+        // ==================== 表单验证方法 ====================
+        validateEmail(emailValue) {
+          const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+          if (!emailValue) {
+            this.emailError = '请输入邮箱地址';
+            return false;
+          }
+          if (!emailRegex.test(emailValue)) {
+            this.emailError = '邮箱格式不正确';
+            return false;
+          }
+          this.emailError = '';
+          return true;
+        },
+        
+        // ==================== 表单处理方法 ====================
+        handleEmailSubmit() {
+          if (!this.validateEmail(this.email)) return;
+          
+          console.log('发送验证码到:', this.email);
+          
+          this.initialCanvasVisible = false;
+          this.reverseCanvasVisible = true;
+          
+          setTimeout(() => {
+            this.step = 'code';
+            this.reverseCanvasVisible = false;
+            this.$nextTick(() => {
+              const firstInput = this.$refs.codeInput0;
+              if (firstInput && firstInput[0]) {
+                firstInput[0].focus();
+              }
+            });
+          }, 500);
+          
+          this.startResendCooldown();
+        },
+        
+        handleCodeInput(index, event) {
+          const value = event.target.value;
+          
+          if (value.length > 0) {
+            this.$set(this.code, index, value[value.length - 1]);
+            
+            if (index < this.code.length - 1) {
+              const nextInput = this.$refs['codeInput' + (index + 1)];
+              if (nextInput && nextInput[0]) {
+                nextInput[0].focus();
+              }
+            }
+          }
+          
+          this.codeError = '';
+        },
+        
+        handleCodeKeydown(index, event) {
+          if (event.key === 'Backspace' && !this.code[index] && index > 0) {
+            const prevInput = this.$refs['codeInput' + (index - 1)];
+            if (prevInput && prevInput[0]) {
+              prevInput[0].focus();
+            }
+          }
+        },
+        
+        handleCodePaste(event) {
+          event.preventDefault();
+          const pasteData = event.clipboardData?.getData('text') || '';
+          const digits = pasteData.replace(/\D/g, '').split('').slice(0, 6);
+          
+          digits.forEach((digit, i) => {
+            if (i < this.code.length) {
+              this.$set(this.code, i, digit);
+            }
+          });
+          
+          const nextEmptyIndex = this.code.findIndex(d => d === '');
+          if (nextEmptyIndex !== -1) {
+            const input = this.$refs['codeInput' + nextEmptyIndex];
+            if (input && input[0]) {
+              input[0].focus();
+            }
+          } else {
+            const lastInput = this.$refs['codeInput' + (this.code.length - 1)];
+            if (lastInput && lastInput[0]) {
+              lastInput[0].focus();
+            }
+          }
+          
+          this.codeError = '';
+        },
+        
+        handleBackClick() {
+          this.reverseCanvasVisible = true;
+          this.initialCanvasVisible = false;
+          
+          setTimeout(() => {
+            this.step = 'email';
+            this.code = ['', '', '', '', '', ''];
+            this.codeError = '';
+            this.reverseCanvasVisible = false;
+            this.initialCanvasVisible = true;
+          }, 500);
+        },
+        
+        handleCodeSubmit() {
+          if (!this.isCodeComplete) return;
+          
+          const codeString = this.code.join('');
+          console.log('验证码:', codeString);
+          
+          this.step = 'success';
+        },
+        
+        handleGoogleLogin() {
+          console.log('Google 登录');
+          alert('Google 登录功能开发中...');
+        },
+        
+        handleDashboard() {
+          console.log('跳转到控制台');
+          window.location.href = '/dashboard';
+        },
+        
+        // ==================== 重发验证码 ====================
+        startResendCooldown() {
+          this.resendCooldown = 60;
+          
+          if (this.resendTimer) {
+            clearInterval(this.resendTimer);
+          }
+          
+          this.resendTimer = setInterval(() => {
+            this.resendCooldown--;
+            if (this.resendCooldown <= 0) {
+              if (this.resendTimer) {
+                clearInterval(this.resendTimer);
+                this.resendTimer = null;
+              }
+            }
+          }, 1000);
+        },
+        
+        handleResendCode() {
+          if (this.resendCooldown > 0) return;
+          
+          console.log('重新发送验证码到:', this.email);
+          this.startResendCooldown();
+        },
+        
+        // ==================== 导航栏 ====================
+        toggleMenu() {
+          this.isMenuOpen = !this.isMenuOpen;
+        },
+      },
+      
+      template: `
+        <div class="relative w-full h-screen overflow-hidden bg-black">
+          <!-- 3D 粒子背景 -->
+          <div class="absolute inset-0">
+            <!-- 初始动画画布 -->
+            <div v-if="initialCanvasVisible" class="absolute inset-0">
+              <canvas ref="initialCanvas" class="w-full h-full"></canvas>
+              <div class="absolute inset-0 bg-gradient-to-t from-black to-transparent"></div>
+            </div>
+            
+            <!-- 反向动画画布 -->
+            <div v-if="reverseCanvasVisible" class="absolute inset-0">
+              <canvas ref="reverseCanvas" class="w-full h-full"></canvas>
+              <div class="absolute inset-0 bg-gradient-to-t from-black to-transparent"></div>
+            </div>
+            
+            <!-- 渐变遮罩 -->
+            <div class="absolute inset-0" style="background: radial-gradient(circle at center, rgba(0,0,0,1) 0%, transparent 100%)"></div>
+            <div class="absolute top-0 left-0 right-0 h-1/3 bg-gradient-to-b from-black to-transparent"></div>
+          </div>
+          
+          <!-- 主要内容 -->
+          <div class="relative z-10 flex flex-col flex-1 h-full">
+            <!-- 导航栏 -->
+            <nav class="fixed top-4 left-1/2 z-50 w-[95%] sm:w-auto" style="transform: translateX(-50%)">
+              <div :class="['backdrop-blur-md border border-gray-700 transition-all duration-300 ease-in-out header-shape', headerShapeClass]" style="background: rgba(17,17,17,0.72)">
+                <div class="px-4 py-3">
+                  <!-- 桌面导航 -->
+                  <div class="hidden sm:flex items-center gap-6">
+                    <div class="flex items-center gap-6">
+                      <!-- Logo -->
+                      <div class="relative w-5 h-5 flex items-center justify-center">
+                        <span class="absolute w-1.5 h-1.5 rounded-full bg-gray-200 opacity-80" style="top: 0; left: 50%; transform: translateX(-50%)"></span>
+                        <span class="absolute w-1.5 h-1.5 rounded-full bg-gray-200 opacity-80" style="left: 0; top: 50%; transform: translateY(-50%)"></span>
+                        <span class="absolute w-1.5 h-1.5 rounded-full bg-gray-200 opacity-80" style="right: 0; top: 50%; transform: translateY(-50%)"></span>
+                        <span class="absolute w-1.5 h-1.5 rounded-full bg-gray-200 opacity-80" style="bottom: 0; left: 50%; transform: translateX(-50%)"></span>
+                        <span class="absolute w-1 h-1 rounded-full bg-white" style="top: 50%; left: 50%; transform: translate(-50%, -50%)"></span>
+                      </div>
+                      
+                      <!-- 导航链接 -->
+                      <a v-for="link in navLinks" :key="link.label" :href="link.href" class="nav-link text-sm">
+                        <div class="nav-link-inner">
+                          <span class="text-gray-300">{{ link.label }}</span>
+                          <span class="text-white">{{ link.label }}</span>
+                        </div>
+                      </a>
+                    </div>
+                    
+                    <div class="flex items-center gap-3 ml-8">
+                      <button class="px-3 py-1.5 text-sm border border-gray-700 text-gray-300 rounded-full hover:border-gray-400 hover:text-white transition-colors duration-200" style="background: rgba(31,31,31,0.62)">登录</button>
+                      <div class="relative gradient-glow-hover">
+                        <div class="gradient-glow"></div>
+                        <button class="relative z-10 px-3 py-1.5 text-sm font-semibold text-black rounded-full transition-all duration-200" style="background: linear-gradient(to bottom right, rgb(243 244 246), rgb(209 213 219))">注册</button>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <!-- 移动导航 -->
+                  <div class="sm:hidden">
+                    <div class="flex items-center justify-between">
+                      <!-- Logo -->
+                      <div class="relative w-5 h-5 flex items-center justify-center">
+                        <span class="absolute w-1.5 h-1.5 rounded-full bg-gray-200 opacity-80" style="top: 0; left: 50%; transform: translateX(-50%)"></span>
+                        <span class="absolute w-1.5 h-1.5 rounded-full bg-gray-200 opacity-80" style="left: 0; top: 50%; transform: translateY(-50%)"></span>
+                        <span class="absolute w-1.5 h-1.5 rounded-full bg-gray-200 opacity-80" style="right: 0; top: 50%; transform: translateY(-50%)"></span>
+                        <span class="absolute w-1.5 h-1.5 rounded-full bg-gray-200 opacity-80" style="bottom: 0; left: 50%; transform: translateX(-50%)"></span>
+                        <span class="absolute w-1 h-1 rounded-full bg-white" style="top: 50%; left: 50%; transform: translate(-50%, -50%)"></span>
+                      </div>
+                      
+                      <button @click="toggleMenu" class="text-gray-300 hover:text-white transition-colors p-2" aria-label="Toggle menu">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path v-if="!isMenuOpen" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+                          <path v-else stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                      </button>
+                    </div>
+                    
+                    <transition name="slide-down">
+                      <div v-if="isMenuOpen" class="mt-4 space-y-3 pb-2">
+                        <a v-for="link in navLinks" :key="link.label" :href="link.href" class="block text-gray-300 hover:text-white transition-colors text-sm">{{ link.label }}</a>
+                        
+                        <div class="space-y-2 pt-2">
+                          <button class="w-full px-4 py-2 text-sm border border-gray-700 text-gray-300 rounded-full hover:border-gray-400 hover:text-white transition-colors duration-200" style="background: rgba(31,31,31,0.62)">登录</button>
+                          <button class="w-full px-4 py-2 text-sm font-semibold text-black rounded-full transition-all duration-200" style="background: linear-gradient(to bottom right, rgb(243 244 246), rgb(209 213 219))">注册</button>
+                        </div>
+                      </div>
+                    </transition>
+                  </div>
+                </div>
+              </div>
+            </nav>
+            
+            <!-- 登录表单区域 -->
+            <div class="flex flex-1 flex-col lg:flex-row">
+              <div class="flex-1 flex flex-col justify-center items-center px-4">
+                <div class="w-full max-w-sm" style="margin-top: 150px">
+                  <!-- 邮箱输入步骤 -->
+                  <transition name="slide-left" mode="out-in">
+                    <div v-if="step === 'email'" key="email-step" class="space-y-6 text-center">
+                      <div class="space-y-1">
+                        <h1 style="font-size: 2.5rem; font-weight: 700; line-height: 1.1; letter-spacing: -0.025em; color: white">欢迎使用</h1>
+                        <p style="font-size: 1.8rem; color: rgba(255,255,255,0.7); font-weight: 300">数字资产交易平台</p>
+                      </div>
+                      
+                      <div class="space-y-4">
+                        <button type="button" @click="handleGoogleLogin" class="w-full flex items-center justify-center gap-2 text-white border rounded-full py-3 px-4 transition-colors" style="backdrop-filter: blur(2px); background: rgba(255,255,255,0.05); border-color: rgba(255,255,255,0.1)" onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background='rgba(255,255,255,0.05)'">
+                          <span class="text-lg">G</span>
+                          <span>使用 Google 登录</span>
+                        </button>
+                        
+                        <div class="flex items-center gap-4">
+                          <div class="h-px flex-1" style="background: rgba(255,255,255,0.1)"></div>
+                          <span class="text-sm" style="color: rgba(255,255,255,0.4)">或</span>
+                          <div class="h-px flex-1" style="background: rgba(255,255,255,0.1)"></div>
+                        </div>
+                        
+                        <form @submit.prevent="handleEmailSubmit">
+                          <div class="relative">
+                            <input v-model="email" type="email" placeholder="请输入邮箱地址" class="w-full text-white border rounded-full py-3 px-4 text-center bg-transparent focus:outline-none" style="backdrop-filter: blur(1px); border-color: rgba(255,255,255,0.1)" onfocus="this.style.borderColor='rgba(255,255,255,0.3)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'" required />
+                            <button type="submit" class="absolute text-white w-9 h-9 flex items-center justify-center rounded-full transition-colors group overflow-hidden" style="right: 6px; top: 6px; background: rgba(255,255,255,0.1)" onmouseover="this.style.background='rgba(255,255,255,0.2)'" onmouseout="this.style.background='rgba(255,255,255,0.1)'">
+                              <span class="relative w-full h-full block overflow-hidden">
+                                <span class="absolute inset-0 flex items-center justify-center transition-transform duration-300 group-hover:translate-x-full">→</span>
+                                <span class="absolute inset-0 flex items-center justify-center transition-transform duration-300 -translate-x-full group-hover:translate-x-0">→</span>
+                              </span>
+                            </button>
+                          </div>
+                          <p v-if="emailError" class="text-sm mt-2" style="color: rgb(248 113 113)">{{ emailError }}</p>
+                        </form>
+                      </div>
+                      
+                      <p class="text-xs pt-10" style="color: rgba(255,255,255,0.4)">
+                        注册即表示您同意我们的<a href="#" class="underline transition-colors" style="color: rgba(255,255,255,0.4)" onmouseover="this.style.color='rgba(255,255,255,0.6)'" onmouseout="this.style.color='rgba(255,255,255,0.4)'">服务协议</a>、<a href="#" class="underline transition-colors" style="color: rgba(255,255,255,0.4)" onmouseover="this.style.color='rgba(255,255,255,0.6)'" onmouseout="this.style.color='rgba(255,255,255,0.4)'">产品条款</a>、<a href="#" class="underline transition-colors" style="color: rgba(255,255,255,0.4)" onmouseover="this.style.color='rgba(255,255,255,0.6)'" onmouseout="this.style.color='rgba(255,255,255,0.4)'">政策</a>、<a href="#" class="underline transition-colors" style="color: rgba(255,255,255,0.4)" onmouseover="this.style.color='rgba(255,255,255,0.6)'" onmouseout="this.style.color='rgba(255,255,255,0.4)'">隐私声明</a>和<a href="#" class="underline transition-colors" style="color: rgba(255,255,255,0.4)" onmouseover="this.style.color='rgba(255,255,255,0.6)'" onmouseout="this.style.color='rgba(255,255,255,0.4)'">Cookie政策</a>。
+                      </p>
+                    </div>
+                    
+                    <!-- 验证码输入步骤 -->
+                    <div v-else-if="step === 'code'" key="code-step" class="space-y-6 text-center">
+                      <div class="space-y-1">
+                        <h1 style="font-size: 2.5rem; font-weight: 700; line-height: 1.1; letter-spacing: -0.025em; color: white">我们已向您发送验证码</h1>
+                        <p style="font-size: 1.25rem; color: rgba(255,255,255,0.5); font-weight: 300">请输入验证码</p>
+                      </div>
+                      
+                      <div class="w-full">
+                        <div class="relative rounded-full py-4 px-5 border bg-transparent" style="border-color: rgba(255,255,255,0.1)">
+                          <div class="flex items-center justify-center">
+                            <template v-for="(digit, i) in code">
+                              <div class="flex items-center" :key="i">
+                                <div class="relative">
+                                  <input :ref="'codeInput' + i" v-model="code[i]" type="text" maxlength="1" class="w-8 h-10 text-center bg-transparent text-white text-xl font-medium focus:outline-none border-0" style="font-size: 1.25rem" @input="handleCodeInput(i, $event)" @keydown="handleCodeKeydown(i, $event)" @paste="handleCodePaste" />
+                                </div>
+                                <div v-if="i < code.length - 1" class="w-2 h-px mx-1" style="background: rgba(255,255,255,0.2)"></div>
+                              </div>
+                            </template>
+                          </div>
+                        </div>
+                        <p v-if="codeError" class="text-sm mt-2" style="color: rgb(248 113 113)">{{ codeError }}</p>
+                      </div>
+                      
+                      <div>
+                        <p v-if="resendCooldown > 0" class="text-sm" style="color: rgba(255,255,255,0.5)">{{ resendCooldown }} 秒后可重新发送</p>
+                        <p v-else class="text-sm cursor-pointer transition-colors" style="color: rgba(255,255,255,0.5)" onmouseover="this.style.color='rgba(255,255,255,0.7)'" onmouseout="this.style.color='rgba(255,255,255,0.5)'" @click="handleResendCode">重新发送验证码</p>
+                      </div>
+                      
+                      <div class="flex w-full gap-3">
+                        <button type="button" @click="handleBackClick" class="rounded-full bg-white text-black font-medium px-8 py-3 transition-colors" style="width: 30%" onmouseover="this.style.background='rgba(255,255,255,0.9)'" onmouseout="this.style.background='white'">返回</button>
+                        <button type="button" :disabled="!isCodeComplete" @click="handleCodeSubmit" :class="['flex-1 rounded-full font-medium py-3 border transition-all duration-300', isCodeComplete ? 'bg-white text-black cursor-pointer' : 'text-white cursor-not-allowed']" :style="isCodeComplete ? 'background: white; border-color: transparent' : 'background: #111; border-color: rgba(255,255,255,0.1); color: rgba(255,255,255,0.5)'">继续</button>
+                      </div>
+                      
+                      <div class="pt-16">
+                        <p class="text-xs" style="color: rgba(255,255,255,0.4)">
+                          注册即表示您同意我们的<a href="#" class="underline transition-colors" style="color: rgba(255,255,255,0.4)" onmouseover="this.style.color='rgba(255,255,255,0.6)'" onmouseout="this.style.color='rgba(255,255,255,0.4)'">服务协议</a>、<a href="#" class="underline transition-colors" style="color: rgba(255,255,255,0.4)" onmouseover="this.style.color='rgba(255,255,255,0.6)'" onmouseout="this.style.color='rgba(255,255,255,0.4)'">产品条款</a>、<a href="#" class="underline transition-colors" style="color: rgba(255,255,255,0.4)" onmouseover="this.style.color='rgba(255,255,255,0.6)'" onmouseout="this.style.color='rgba(255,255,255,0.4)'">政策</a>、<a href="#" class="underline transition-colors" style="color: rgba(255,255,255,0.4)" onmouseover="this.style.color='rgba(255,255,255,0.6)'" onmouseout="this.style.color='rgba(255,255,255,0.4)'">隐私声明</a>和<a href="#" class="underline transition-colors" style="color: rgba(255,255,255,0.4)" onmouseover="this.style.color='rgba(255,255,255,0.6)'" onmouseout="this.style.color='rgba(255,255,255,0.4)'">Cookie政策</a>。
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <!-- 成功步骤 -->
+                    <div v-else key="success-step" class="space-y-6 text-center">
+                      <div class="space-y-1">
+                        <h1 style="font-size: 2.5rem; font-weight: 700; line-height: 1.1; letter-spacing: -0.025em; color: white">登录成功！</h1>
+                        <p style="font-size: 1.25rem; color: rgba(255,255,255,0.5); font-weight: 300">欢迎回来</p>
+                      </div>
+                      
+                      <div class="py-10">
+                        <div class="mx-auto w-16 h-16 rounded-full flex items-center justify-center animate-scale-in" style="background: linear-gradient(to bottom right, white, rgba(255,255,255,0.7))">
+                          <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-black" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                          </svg>
+                        </div>
+                      </div>
+                      
+                      <button type="button" @click="handleDashboard" class="w-full rounded-full bg-white text-black font-medium py-3 transition-colors" onmouseover="this.style.background='rgba(255,255,255,0.9)'" onmouseout="this.style.background='white'">进入控制台</button>
+                    </div>
+                  </transition>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      `
+    });
+  </script>
+</body>
+</html>

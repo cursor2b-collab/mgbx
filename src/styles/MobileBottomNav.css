@@ -1,0 +1,587 @@
+/* ========================================
+   移动端底部导航 - 参考设计样式
+   ======================================== */
+
+/* 底部导航主容器 */
+.aiz-mobile-bottom-nav {
+    position: fixed !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    z-index: 1030 !important;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    gap: 16px;
+    padding: 16px 16px calc(16px + env(safe-area-inset-bottom, 0px));
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    pointer-events: none;
+}
+
+/* 渐变背景层 - 移除以避免颜色不一致 */
+.aiz-mobile-bottom-nav::before {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 140px;
+    background: transparent;
+    pointer-events: none;
+    z-index: -1;
+}
+
+/* ========================================
+   左侧：主导航横向长条容器 - 270px固定宽度
+   ======================================== */
+.main-nav-glass-mobile {
+    position: relative;
+    display: flex;
+    align-items: center;
+    overflow: hidden;
+    width: 270px;
+    border-radius: 30px;
+    padding: 2px;
+    background: linear-gradient(135deg, 
+        rgba(35, 35, 35, 0.85), 
+        rgba(50, 50, 50, 0.75) 20%, 
+        rgba(50, 50, 50, 0.75) 80%, 
+        rgba(35, 35, 35, 0.85));
+    box-shadow: 
+        0 10px 40px rgba(0, 0, 0, 0.7),
+        0 3px 10px rgba(0, 0, 0, 0.5),
+        inset 0 1px 0 rgba(255, 255, 255, 0.12);
+    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 2.2);
+    pointer-events: auto;
+    isolation: isolate;
+}
+
+.main-nav-glass-mobile:hover {
+    box-shadow: 
+        0 12px 48px rgba(0, 0, 0, 0.8),
+        0 4px 12px rgba(163, 240, 48, 0.08),
+        inset 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+
+/* 玻璃扭曲层 */
+.glass-distortion-layer-mobile {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    border-radius: inherit;
+    background: transparent;
+    backdrop-filter: blur(18px) contrast(1.15) saturate(150%);
+    -webkit-backdrop-filter: blur(18px) contrast(1.15) saturate(150%);
+    pointer-events: none;
+}
+
+/* 主玻璃表面 */
+.main-glass-surface-mobile {
+    position: absolute;
+    inset: 2px;
+    z-index: 1;
+    border-radius: calc(30px - 2px);
+    background: linear-gradient(135deg, 
+        rgba(42, 42, 42, 0.92) 0%,
+        rgba(32, 32, 32, 0.96) 50%,
+        rgba(22, 22, 22, 0.92) 100%);
+    backdrop-filter: blur(40px) saturate(180%) brightness(1.08);
+    -webkit-backdrop-filter: blur(40px) saturate(180%) brightness(1.08);
+    box-shadow: 
+        0 2px 8px rgba(0, 0, 0, 0.4),
+        inset 0 1px 1px rgba(255, 255, 255, 0.16),
+        inset 0 0 25px rgba(255, 255, 255, 0.04),
+        inset -12px -12px 28px rgba(255, 255, 255, 0.06),
+        inset 0 18px 22px rgba(0, 0, 0, 0.35);
+    pointer-events: none;
+}
+
+/* 全息渐变叠加 */
+.holographic-overlay-mobile {
+    position: absolute;
+    inset: 2px;
+    z-index: 2;
+    border-radius: calc(30px - 2px);
+    background: linear-gradient(135deg, 
+        rgba(163, 240, 48, 0.09) 0%, 
+        rgba(100, 210, 110, 0.05) 25%, 
+        rgba(80, 170, 200, 0.05) 50%, 
+        rgba(163, 240, 48, 0.04) 75%, 
+        rgba(255, 255, 255, 0.06) 100%);
+    opacity: 0.65;
+    pointer-events: none;
+    animation: holographicShift 8s ease-in-out infinite;
+}
+
+@keyframes holographicShift {
+    0%, 100% { 
+        opacity: 0.65; 
+        background-position: 0% 50%;
+    }
+    50% { 
+        opacity: 0.35;
+        background-position: 100% 50%;
+    }
+}
+
+/* ========================================
+   玻璃内容区 - 60px高度
+   ======================================== */
+.glass-content-mobile {
+    position: relative;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    gap: 0;
+    padding: 0;
+    height: 60px;
+    width: 100%;
+    border-radius: calc(30px - 2px);
+}
+
+/* ========================================
+   动态滑块 - 52px高度
+   ======================================== */
+
+/* 注册可动画的CSS变量 */
+@property --glider-x {
+    syntax: '<length>';
+    inherits: false;
+    initial-value: 0px;
+}
+
+@property --glider-width {
+    syntax: '<length>';
+    inherits: false;
+    initial-value: 0px;
+}
+
+.glider-mobile {
+    position: absolute;
+    top: 50%;
+    left: 0;
+    height: 52px;
+    border-radius: 30px;
+    
+    /* 使用CSS变量控制位置和宽度 */
+    width: var(--glider-width);
+    transform: translateX(var(--glider-x)) translateY(-50%);
+    
+    /* 液态玻璃背景 */
+    background: rgba(255, 255, 255, 0.28);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    
+    /* 玻璃边框 */
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    
+    /* 多层阴影 - 液态效果 */
+    box-shadow: 
+        inset 0 2px 5px rgba(255, 255, 255, 0.35),
+        0 4px 18px rgba(0, 0, 0, 0.25),
+        0 8px 36px rgba(255, 255, 255, 0.12);
+    
+    z-index: 1;
+    pointer-events: none;
+    
+    /* 始终显示滑块 - 移除opacity控制 */
+    opacity: 1;
+    
+    /* 平滑过渡动画 - 始终启用 */
+    transition: 
+        --glider-x 0.45s cubic-bezier(0.34, 1.56, 0.64, 1),
+        --glider-width 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+    
+    /* GPU加速 */
+    will-change: transform, width;
+}
+
+/* 初始化后的类（保留用于兼容性，但不再改变opacity） */
+.glider-mobile.glider-animated {
+    /* 保持相同的过渡效果 */
+    transition: 
+        --glider-x 0.45s cubic-bezier(0.34, 1.56, 0.64, 1),
+        --glider-width 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* ========================================
+   导航按钮 - flex-1均分
+   ======================================== */
+.nav-button-mobile {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+    padding: 0;
+    flex: 1;
+    background: none;
+    border: none;
+    color: rgba(255, 255, 255, 0.5) !important;
+    text-decoration: none;
+    z-index: 2;
+}
+
+.nav-button-mobile.active {
+    color: #A3F030 !important;
+}
+
+.nav-button-mobile:hover {
+    color: rgba(255, 255, 255, 0.75) !important;
+    text-decoration: none;
+    transform: translateY(-1px);
+}
+
+.nav-button-mobile:active {
+    transform: scale(0.94);
+}
+
+/* ========================================
+   导航图标 - 22px
+   ======================================== */
+.nav-icon-mobile {
+    width: 22px;
+    height: 22px;
+    position: relative;
+    z-index: 10;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.4));
+    flex-shrink: 0;
+}
+
+.nav-button-mobile:hover .nav-icon-mobile {
+    transform: scale(1.08);
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5));
+}
+
+.nav-button-mobile:active .nav-icon-mobile {
+    transform: scale(0.95);
+}
+
+.nav-button-mobile.active .nav-icon-mobile {
+    filter: 
+        drop-shadow(0 0 10px rgba(163, 240, 48, 0.7)) 
+        drop-shadow(0 0 5px rgba(163, 240, 48, 0.5))
+        drop-shadow(0 2px 5px rgba(0, 0, 0, 0.5));
+    transform: scale(1.02);
+}
+
+/* ========================================
+   导航标签 - 10px，始终显示
+   ======================================== */
+.nav-label-mobile {
+    position: relative;
+    z-index: 10;
+    font-size: 10px;
+    margin-top: 2px;
+    margin-bottom: 0;
+    font-weight: 600;
+    white-space: nowrap;
+    letter-spacing: 0.3px;
+    transition: all 0.15s ease-in;
+    width: calc(100% - 12px);
+    text-align: center;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1;
+}
+
+/* 激活状态 - 荧光绿发光 */
+.nav-button-mobile.active .nav-label-mobile {
+    text-shadow: 
+        0 0 10px rgba(163, 240, 48, 0.6),
+        0 0 5px rgba(163, 240, 48, 0.4),
+        0 1px 3px rgba(0, 0, 0, 0.7);
+}
+
+/* ========================================
+   右侧：独立圆形搜索按钮 - 60px
+   ======================================== */
+.search-button-container-mobile {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    border-radius: 50%;
+    width: 60px;
+    height: 60px;
+    padding: 2px;
+    background: linear-gradient(135deg, 
+        rgba(35, 35, 35, 0.85), 
+        rgba(50, 50, 50, 0.75) 30%, 
+        rgba(50, 50, 50, 0.75) 70%, 
+        rgba(35, 35, 35, 0.85));
+    box-shadow: 
+        0 10px 40px rgba(0, 0, 0, 0.7),
+        0 3px 10px rgba(0, 0, 0, 0.5),
+        inset 0 1px 0 rgba(255, 255, 255, 0.12);
+    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 2.2);
+    pointer-events: auto;
+    isolation: isolate;
+}
+
+.search-button-container-mobile:hover {
+    transform: translateY(-2px);
+    box-shadow: 
+        0 14px 48px rgba(0, 0, 0, 0.8),
+        0 5px 14px rgba(163, 240, 48, 0.18),
+        inset 0 1px 0 rgba(255, 255, 255, 0.16);
+}
+
+.search-glass-surface-mobile {
+    position: absolute;
+    inset: 2px;
+    z-index: 1;
+    border-radius: inherit;
+    background: linear-gradient(135deg, 
+        rgba(48, 48, 48, 0.92) 0%,
+        rgba(35, 35, 35, 0.96) 50%,
+        rgba(28, 28, 28, 0.92) 100%);
+    backdrop-filter: blur(40px) saturate(180%) brightness(1.12);
+    -webkit-backdrop-filter: blur(40px) saturate(180%) brightness(1.12);
+    box-shadow: 
+        0 2px 8px rgba(0, 0, 0, 0.4),
+        inset 0 1px 2px rgba(255, 255, 255, 0.18),
+        inset 0 0 28px rgba(255, 255, 255, 0.04),
+        inset -12px -12px 28px rgba(255, 255, 255, 0.05),
+        inset 0 16px 22px rgba(0, 0, 0, 0.28);
+    pointer-events: none;
+}
+
+.search-holographic-overlay-mobile {
+    position: absolute;
+    inset: 2px;
+    z-index: 2;
+    border-radius: inherit;
+    background: linear-gradient(135deg, 
+        rgba(163, 240, 48, 0.12) 0%, 
+        rgba(100, 230, 130, 0.06) 25%, 
+        rgba(80, 180, 210, 0.06) 50%, 
+        rgba(163, 240, 48, 0.05) 75%, 
+        rgba(255, 255, 255, 0.08) 100%);
+    opacity: 0.7;
+    pointer-events: none;
+    animation: holographicShift 8s ease-in-out infinite;
+}
+
+/* ========================================
+   搜索按钮主体
+   ======================================== */
+.search-button-mobile {
+    position: relative;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    cursor: pointer;
+    background: none;
+    border: none;
+    color: rgba(255, 255, 255, 0.6) !important;
+    overflow: hidden;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    text-decoration: none;
+}
+
+.search-button-mobile:hover {
+    color: rgba(255, 255, 255, 0.85) !important;
+    text-decoration: none;
+}
+
+.search-button-mobile:active {
+    transform: scale(0.92);
+}
+
+/* ========================================
+   搜索按钮 - 扫光效果
+   ======================================== */
+.search-sweep-light-mobile {
+    position: absolute;
+    top: 0;
+    right: 100%;
+    width: 100%;
+    height: 100%;
+    z-index: 5;
+    background: linear-gradient(90deg,
+        transparent 0%,
+        rgba(163, 240, 48, 0) 20%,
+        rgba(163, 240, 48, 0.35) 48%,
+        rgba(255, 255, 255, 0.45) 52%,
+        rgba(163, 240, 48, 0.35) 56%,
+        rgba(163, 240, 48, 0) 80%,
+        transparent 100%);
+    opacity: 0;
+    pointer-events: none;
+    transform: skewX(-20deg);
+    border-radius: inherit;
+}
+
+/* 鼠标悬停时触发扫光动画 */
+.search-button-mobile:hover .search-sweep-light-mobile {
+    animation: sweepLight-mobile 1.2s ease-in-out;
+}
+
+@keyframes sweepLight-mobile {
+    0% {
+        right: 100%;
+        opacity: 0;
+    }
+    20% {
+        opacity: 0.85;
+    }
+    50% {
+        right: -20%;
+        opacity: 1;
+    }
+    80% {
+        opacity: 0.65;
+    }
+    100% {
+        right: -100%;
+        opacity: 0;
+    }
+}
+
+/* ========================================
+   搜索按钮 - 其他光效层
+   ======================================== */
+.search-shine-main-mobile {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 150%;
+    height: 150%;
+    background: radial-gradient(circle, 
+        rgba(163, 240, 48, 0.45) 0%, 
+        rgba(163, 240, 48, 0.25) 30%, 
+        transparent 65%);
+    transform: translate(-50%, -50%);
+    opacity: 0;
+    filter: blur(14px);
+    pointer-events: none;
+}
+
+.search-button-mobile:active .search-shine-main-mobile {
+    opacity: 1;
+    animation: glowPulse-mobile 0.6s ease-out;
+}
+
+.search-shine-secondary-mobile {
+    display: none;
+}
+
+.search-glow-pulse-mobile {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at center, 
+        rgba(163, 240, 48, 0.55) 0%, 
+        rgba(163, 240, 48, 0.25) 40%,
+        transparent 65%);
+    filter: blur(12px);
+    opacity: 0;
+    pointer-events: none;
+}
+
+.search-button-mobile:active .search-glow-pulse-mobile {
+    opacity: 1;
+    animation: glowPulse-mobile 0.6s ease-out;
+}
+
+@keyframes glowPulse-mobile {
+    0% {
+        opacity: 0;
+        transform: scale(0.8);
+    }
+    50% {
+        opacity: 1;
+        transform: scale(1.25);
+    }
+    100% {
+        opacity: 0;
+        transform: scale(1);
+    }
+}
+
+/* ========================================
+   搜索图标 - 22px
+   ======================================== */
+.search-icon-mobile {
+    position: relative;
+    z-index: 10;
+    width: 22px;
+    height: 22px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0.25));
+}
+
+.search-button-mobile:hover .search-icon-mobile {
+    transform: scale(1.12);
+    filter: drop-shadow(0 0 8px rgba(163, 240, 48, 0.5));
+}
+
+.search-button-mobile:active .search-icon-mobile {
+    transform: scale(0.96);
+}
+
+/* ========================================
+   响应式适配
+   ======================================== */
+@media (max-width: 375px) {
+    .aiz-mobile-bottom-nav {
+        gap: 12px;
+        padding: 12px 12px calc(12px + env(safe-area-inset-bottom, 0px));
+    }
+    
+    .main-nav-glass-mobile {
+        width: 240px;
+    }
+    
+    .glass-content-mobile {
+        height: 56px;
+        padding: 0;
+    }
+    
+    .glider-mobile {
+        height: 48px;
+        border-radius: 28px;
+    }
+    
+    .nav-button-mobile {
+        padding: 0;
+    }
+    
+    .nav-icon-mobile {
+        width: 20px;
+        height: 20px;
+    }
+    
+    .nav-label-mobile {
+        font-size: 9px;
+        margin-top: 3px;
+    }
+    
+    .search-button-container-mobile {
+        width: 56px;
+        height: 56px;
+    }
+    
+    .search-icon-mobile {
+        width: 20px;
+        height: 20px;
+    }
+}
+
+/* 桌面端完全隐藏 */
+@media (min-width: 992px) {
+    .aiz-mobile-bottom-nav {
+        display: none !important;
+    }
+}
