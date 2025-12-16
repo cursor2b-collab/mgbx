@@ -143,7 +143,9 @@ export function AuthPage() {
         display: 'flex',
         flexDirection: isMobile ? 'column' : 'row',
         overflow: isMobile ? 'auto' : 'hidden',
-        minHeight: 0
+        minHeight: 0,
+        paddingTop: '56px',
+        scrollMarginTop: '56px'
       }}>
 
       {/* Left Section - Form for Sign In, Image for Sign Up */}
