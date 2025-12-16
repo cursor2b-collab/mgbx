@@ -5,6 +5,7 @@ import { MobileBottomNav } from './MobileBottomNav'
 import { FlickeringFooter } from './ui/flickering-footer'
 import { useAuth } from '../hooks/useAuth'
 import { projectId, publicAnonKey } from '../utils/supabase/info'
+import '../styles/globals.css'
 import { 
   ChevronRight,
   ChevronDown,
