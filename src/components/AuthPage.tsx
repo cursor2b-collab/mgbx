@@ -174,7 +174,6 @@ export function AuthPage() {
                 backgroundColor: '#000000',
                 display: !isMobile ? 'block' : 'none',
                 overflow: 'hidden',
-                border: '2px solid #C5FF30',
                 borderRadius: '24px'
               }}
           >
@@ -902,7 +901,6 @@ export function AuthPage() {
                 backgroundColor: '#000000',
                 display: !isMobile ? 'block' : 'none',
                 overflow: 'hidden',
-                border: '2px solid #C5FF30',
                 borderRadius: '24px'
               }}
           >
