@@ -46,7 +46,7 @@ const footerLinks: FooterSection[] = [
 export function Footer() {
 	return (
 		<footer 
-			className="relative w-full flex flex-col items-center justify-center border-t border-white/10 bg-black px-6 py-12 lg:py-16 shadow-[0_-10px_40px_rgba(0,0,0,0.3),0_-5px_20px_rgba(0,0,0,0.2)]"
+			className="relative w-full flex flex-col items-center justify-center border-t border-white/10 bg-black px-6 py-6 lg:py-8 shadow-[0_-10px_40px_rgba(0,0,0,0.3),0_-5px_20px_rgba(0,0,0,0.2)]"
 			style={{
 				borderTopLeftRadius: '24px',
 				borderTopRightRadius: '24px',
