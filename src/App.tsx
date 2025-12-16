@@ -1,7 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { Toaster } from 'sonner'
 import { AuthCallback } from './components/AuthCallback'
-import { Dashboard } from './components/Dashboard'
+import { ProfilePage } from './components/ProfilePage'
 import { ProtectedRoute } from './components/ProtectedRoute'
 import { CryptoExchangeHomepage } from './components/CryptoExchangeHomepage'
 import { AuthForm } from './components/AuthForm'
@@ -79,7 +79,7 @@ export default function App() {
             path="/dashboard"
             element={
               <ProtectedRoute>
-                <Dashboard />
+                <ProfilePage />
               </ProtectedRoute>
             }
           />
