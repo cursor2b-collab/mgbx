@@ -127,12 +127,12 @@ export default function App() {
             } 
           />
           
-          {/* 个人资产页 - 资产管理界面 */}
+          {/* 个人资产页 - 账户页面 */}
           <Route 
             path="/profile" 
             element={
               <ProtectedRoute>
-                <AssetsPage />
+                <ProfilePage />
               </ProtectedRoute>
             } 
           />
