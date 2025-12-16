@@ -134,6 +134,66 @@ const MOCK_ASSETS: Asset[] = [
     avgBuyPrice: 180,
     profit: 1500,
     profitPercent: 16.67
+  },
+  {
+    id: '6',
+    symbol: 'DOGE',
+    name: 'Dogecoin',
+    icon: 'https://assets.coingecko.com/coins/images/5/small/dogecoin.png',
+    balance: 0,
+    availableBalance: 0,
+    frozenBalance: 0,
+    usdValue: 0,
+    price: 0.08,
+    change24h: 0.5,
+    avgBuyPrice: 0.08,
+    profit: 0,
+    profitPercent: 0
+  },
+  {
+    id: '7',
+    symbol: 'USDC',
+    name: 'USD Coin',
+    icon: 'https://assets.coingecko.com/coins/images/6319/small/USD_Coin_icon.png',
+    balance: 0,
+    availableBalance: 0,
+    frozenBalance: 0,
+    usdValue: 0,
+    price: 1,
+    change24h: 0.01,
+    avgBuyPrice: 1,
+    profit: 0,
+    profitPercent: 0
+  },
+  {
+    id: '8',
+    symbol: 'TRX',
+    name: 'TRON',
+    icon: 'https://assets.coingecko.com/coins/images/1094/small/tron-trx-logo.png',
+    balance: 0,
+    availableBalance: 0,
+    frozenBalance: 0,
+    usdValue: 0,
+    price: 0.11,
+    change24h: -0.3,
+    avgBuyPrice: 0.11,
+    profit: 0,
+    profitPercent: 0
+  },
+  {
+    id: '9',
+    symbol: 'TON',
+    name: 'Toncoin',
+    icon: 'https://assets.coingecko.com/coins/images/17980/small/ton_symbol.png',
+    balance: 0,
+    availableBalance: 0,
+    frozenBalance: 0,
+    usdValue: 0,
+    price: 5.2,
+    change24h: 1.8,
+    avgBuyPrice: 5.2,
+    profit: 0,
+    profitPercent: 0
   }
 ]
 
