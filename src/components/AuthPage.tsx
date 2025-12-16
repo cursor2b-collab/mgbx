@@ -7,7 +7,7 @@ import { toast } from 'sonner';
 import { useLanguage } from '../contexts/LanguageContext';
 import { LanguageSelector } from './LanguageSelector';
 import { Navbar } from './Navbar';
-import { FlickeringFooter } from './ui/flickering-footer';
+import { Footer } from './ui/footer-section';
 
 // Google Icon Component
 const GoogleIcon = () => (
@@ -961,7 +961,7 @@ export function AuthPage() {
         </AnimatePresence>
       </div>
       </div>
-      <FlickeringFooter />
+      <Footer />
       <style>{`
         .auth-input-wrapper:focus-within {
           border-color: #C5FF30 !important;
