@@ -420,7 +420,7 @@ export function AuthPage() {
                         navigate('/auth/reset-password');
                       }}
                       style={{
-                        color: '#a78bfa',
+                        color: '#C5FF30',
                         textDecoration: 'none'
                       }}
                     >
@@ -550,7 +550,7 @@ export function AuthPage() {
                       setIsSignUp(true);
                     }}
                     style={{
-                      color: '#a78bfa',
+                      color: '#C5FF30',
                       textDecoration: 'none'
                     }}
                   >
@@ -848,7 +848,7 @@ export function AuthPage() {
                       setIsSignUp(false);
                     }}
                     style={{
-                      color: '#a78bfa',
+                      color: '#C5FF30',
                       textDecoration: 'none'
                     }}
                   >
