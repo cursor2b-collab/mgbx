@@ -5,6 +5,7 @@ import { Card } from './ui/card'
 import { Badge } from './ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs'
 import { MobileBottomNav } from './MobileBottomNav'
+import { Navbar } from './Navbar'
 import { useAuth } from '../hooks/useAuth'
 import { projectId } from '../utils/supabase/info'
 import { 
@@ -387,22 +388,7 @@ export function AssetsPage() {
 
   return (
     <div className="min-h-screen bg-black pb-24">
-      {/* 顶部标题栏 */}
-      <div className="sticky top-0 z-40 bg-[#0A0A0A]/95 backdrop-blur-xl border-b border-white/10">
-        <div className="max-w-7xl mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <h1 className="text-white text-xl">我的资产</h1>
-            <Button 
-              variant="ghost" 
-              size="sm"
-              onClick={handleLogout}
-              className="text-white/70 hover:text-red-400 hover:bg-red-500/10"
-            >
-              <LogOut className="w-5 h-5" />
-            </Button>
-          </div>
-        </div>
-      </div>
+      <Navbar />
 
       <div className="max-w-7xl mx-auto px-4 py-6 space-y-6">
         {/* 资产概览卡片 */}
