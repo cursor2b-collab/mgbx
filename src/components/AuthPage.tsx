@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import { useLanguage } from '../contexts/LanguageContext';
 import { LanguageSelector } from './LanguageSelector';
 import { Navbar } from './Navbar';
+import { FlickeringFooter } from './ui/flickering-footer';
 
 // Google Icon Component
 const GoogleIcon = () => (
@@ -129,19 +130,20 @@ export function AuthPage() {
 
   return (
     <div style={{
-      height: '100dvh',
+      minHeight: '100dvh',
       width: '100dvw',
       display: 'flex',
       flexDirection: 'column',
       fontFamily: 'system-ui, -apple-system, sans-serif',
-      overflow: 'hidden'
+      overflow: 'auto'
     }}>
       <Navbar />
       <div style={{
         flex: 1,
         display: 'flex',
         flexDirection: isMobile ? 'column' : 'row',
-        overflow: isMobile ? 'auto' : 'hidden'
+        overflow: isMobile ? 'auto' : 'hidden',
+        minHeight: 0
       }}>
 
       {/* Left Section - Form for Sign In, Image for Sign Up */}
@@ -959,6 +961,7 @@ export function AuthPage() {
         </AnimatePresence>
       </div>
       </div>
+      <FlickeringFooter />
       <style>{`
         .auth-input-wrapper:focus-within {
           border-color: #C5FF30 !important;
