@@ -79,7 +79,7 @@ export default function App() {
             path="/dashboard"
             element={
               <ProtectedRoute>
-                <ProfilePage />
+                <AssetsPage />
               </ProtectedRoute>
             }
           />
@@ -127,12 +127,12 @@ export default function App() {
             } 
           />
           
-          {/* 个人资产页 - 账户页面 */}
+          {/* 个人资产页 - 资产管理界面 */}
           <Route 
             path="/profile" 
             element={
               <ProtectedRoute>
-                <ProfilePage />
+                <AssetsPage />
               </ProtectedRoute>
             } 
           />
