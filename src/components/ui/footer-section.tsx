@@ -61,7 +61,7 @@ export function Footer() {
 					<img 
 						src="https://cy-747263170.imgix.net/logo.1730b8a9.gif" 
 						alt="MGBX Logo" 
-						className="h-8 w-auto"
+						className="h-16 w-auto"
 					/>
 					<p className="text-gray-400 mt-8 text-sm md:mt-0">
 						© {new Date().getFullYear()} MGBX. All rights reserved.
