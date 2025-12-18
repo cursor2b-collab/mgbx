@@ -731,7 +731,7 @@ export function MobileHomepage() {
                   return (
                     <tr
                       key={item.symbol}
-                      onClick={() => navigate(`/trading?symbol=${item.symbol}`)}
+                      onClick={() => navigate(`/trading?type=perpetual&symbol=${item.symbol}`)}
                       className="border-b border-white/5 hover:bg-[#1A1C1E] transition-colors group cursor-pointer active:bg-[#252729]"
                     >
                       {/* Name / Volume */}

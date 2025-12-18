@@ -23,6 +23,7 @@ import { MobileCryptoTradingPage } from './MobileCryptoTradingPage'
 import { MobileOptionsTradingPage } from './MobileOptionsTradingPage'
 import { MobileForexTradingPage } from './MobileForexTradingPage'
 import { MobileCommoditiesTradingPage } from './MobileCommoditiesTradingPage'
+import { MobilePerpetualTradingPage } from './MobilePerpetualTradingPage'
 import { MobileCopyTradingPage } from './MobileCopyTradingPage'
 import { MobileStakingPage } from './MobileStakingPage'
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
@@ -77,7 +78,7 @@ export function MobileTradingPage() {
 
   const [selectedSymbol, setSelectedSymbol] = useState(initialSymbol)
   const [selectedName, setSelectedName] = useState(initialName)
-  const [selectedType, setSelectedType] = useState<'stock' | 'crypto' | 'options' | 'forex' | 'commodities' | 'copy'>(initialType)
+  const [selectedType, setSelectedType] = useState<'stock' | 'crypto' | 'options' | 'forex' | 'commodities' | 'perpetual' | 'copy'>(initialType)
   const [topNavTab, setTopNavTab] = useState<'trading' | 'copy' | 'staking' | 'ipo'>(initialTab === 'copy' ? 'copy' : initialTab)
   const [tradeMode, setTradeMode] = useState<'normal' | 'margin' | 'premarket'>('normal')
   const [orderType, setOrderType] = useState<'market' | 'limit'>('market')
@@ -122,7 +123,7 @@ export function MobileTradingPage() {
     }
 
     const typeParam = searchParams.get('type')
-    if (typeParam && ['stock', 'crypto', 'options', 'forex', 'commodities', 'copy'].includes(typeParam)) {
+    if (typeParam && ['stock', 'crypto', 'options', 'forex', 'commodities', 'perpetual', 'copy'].includes(typeParam)) {
       setSelectedType(typeParam as any)
     }
 
@@ -249,6 +250,7 @@ export function MobileTradingPage() {
             {[
               { key: 'stock', label: '股票' },
               { key: 'crypto', label: '币币' },
+              { key: 'perpetual', label: '永续合约' },
               { key: 'options', label: '期权' },
               { key: 'forex', label: '外汇' },
               { key: 'commodities', label: '大宗商品' }
@@ -284,6 +286,8 @@ export function MobileTradingPage() {
         <MobileForexTradingPage />
       ) : topNavTab === 'trading' && selectedType === 'commodities' ? (
         <MobileCommoditiesTradingPage />
+      ) : topNavTab === 'trading' && selectedType === 'perpetual' ? (
+        <MobilePerpetualTradingPage />
       ) : topNavTab === 'staking' ? (
         <MobileStakingPage />
       ) : (
