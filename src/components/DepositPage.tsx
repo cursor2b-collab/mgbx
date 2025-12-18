@@ -6,7 +6,7 @@ import { Badge } from './ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs'
 import { MobileBottomNav } from './MobileBottomNav'
 import { useAuth } from '../hooks/useAuth'
-import { depositService, type Deposit } from '../services/database'
+import { hzRechargeService, hzUserService, hzCoinsCogsService, type HzRecharge, type HzCoinsCogs } from '../services/hzDatabase'
 import { 
   ArrowLeft,
   Copy,
@@ -27,6 +27,7 @@ interface CryptoAsset {
   name: string
   icon: string
   networks: Network[]
+  coinData?: HzCoinsCogs // 保存数据库原始数据
 }
 
 // 网络类型
@@ -40,43 +41,28 @@ interface Network {
   fee: number
 }
 
-// 支持的币种
-const SUPPORTED_ASSETS: CryptoAsset[] = [
-  {
-    symbol: 'USDT',
-    name: 'Tether',
-    icon: 'https://assets.coingecko.com/coins/images/325/small/Tether.png',
-    networks: [
-      { id: 'trc20', name: 'TRC20', fullName: 'Tron (TRC20)', minDeposit: 1, confirmations: 19, estimatedTime: '2分钟', fee: 0 },
-      { id: 'erc20', name: 'ERC20', fullName: 'Ethereum (ERC20)', minDeposit: 10, confirmations: 12, estimatedTime: '5分钟', fee: 0 },
-      { id: 'bep20', name: 'BEP20', fullName: 'BNB Smart Chain (BEP20)', minDeposit: 1, confirmations: 15, estimatedTime: '3分钟', fee: 0 }
-    ]
-  },
-  {
-    symbol: 'BTC',
-    name: 'Bitcoin',
-    icon: 'https://assets.coingecko.com/coins/images/1/small/bitcoin.png',
-    networks: [
-      { id: 'bitcoin', name: 'Bitcoin', fullName: 'Bitcoin Network', minDeposit: 0.0001, confirmations: 2, estimatedTime: '30分钟', fee: 0 }
-    ]
-  },
-  {
-    symbol: 'ETH',
-    name: 'Ethereum',
-    icon: 'https://assets.coingecko.com/coins/images/279/small/ethereum.png',
-    networks: [
-      { id: 'erc20', name: 'ERC20', fullName: 'Ethereum Network', minDeposit: 0.01, confirmations: 12, estimatedTime: '5分钟', fee: 0 }
-    ]
-  },
-  {
-    symbol: 'BNB',
-    name: 'BNB',
-    icon: 'https://assets.coingecko.com/coins/images/825/small/bnb-icon2_2x.png',
-    networks: [
-      { id: 'bep20', name: 'BEP20', fullName: 'BNB Smart Chain', minDeposit: 0.01, confirmations: 15, estimatedTime: '3分钟', fee: 0 }
-    ]
-  }
-]
+// 将数据库币种转换为前端格式
+const convertCoinToAsset = (coin: HzCoinsCogs): CryptoAsset => {
+  // 从 online 字段解析网络信息（例如 "Trx(TRC20)" 或 "Ethereum (ERC20)"）
+  const networkName = coin.online || coin.coinname || '';
+  const networkId = networkName.toLowerCase().replace(/[^a-z0-9]/g, '');
+  
+  return {
+    symbol: coin.coinname || '',
+    name: coin.coinfullname || coin.coinname || '',
+    icon: coin.coinlogo || `https://assets.coingecko.com/coins/images/325/small/Tether.png`,
+    networks: [{
+      id: networkId,
+      name: networkName,
+      fullName: networkName,
+      minDeposit: 0.001, // 默认值，可以从数据库读取
+      confirmations: 12, // 默认值
+      estimatedTime: '5分钟', // 默认值
+      fee: coin.tx_num || 0
+    }],
+    coinData: coin // 保存原始数据以便后续使用
+  };
+};
 
 export function DepositPage() {
   const navigate = useNavigate()
@@ -85,12 +71,38 @@ export function DepositPage() {
   const [selectedNetwork, setSelectedNetwork] = useState<Network | null>(null)
   const [depositAddress, setDepositAddress] = useState('')
   const [searchTerm, setSearchTerm] = useState('')
-  const [deposits, setDeposits] = useState<Deposit[]>([])
+  const [deposits, setDeposits] = useState<HzRecharge[]>([])
   const [historyLoading, setHistoryLoading] = useState(true)
   const [showQR, setShowQR] = useState(false)
+  const [hzUserId, setHzUserId] = useState<number | null>(null)
+  const [supportedAssets, setSupportedAssets] = useState<CryptoAsset[]>([])
+  const [assetsLoading, setAssetsLoading] = useState(true)
+
+  // 加载币种列表
+  useEffect(() => {
+    const loadCoins = async () => {
+      try {
+        setAssetsLoading(true)
+        // 从数据库获取所有启用的币种（state=1 且 in_state=1 表示充值开启）
+        const coins = await hzCoinsCogsService.getAllCoins()
+        // 只显示启用且充值开启的币种
+        const enabledCoins = coins.filter(coin => coin.state === 1 && coin.in_state === 1)
+        // 转换为前端格式
+        const assets = enabledCoins.map(convertCoinToAsset)
+        setSupportedAssets(assets)
+      } catch (error: any) {
+        console.error('加载币种列表失败:', error)
+        toast.error('加载币种列表失败')
+      } finally {
+        setAssetsLoading(false)
+      }
+    }
+
+    loadCoins()
+  }, [])
 
   useEffect(() => {
-    const loadDeposits = async () => {
+    const loadUserAndDeposits = async () => {
       if (authLoading) return
       if (!user) {
         navigate('/login', { replace: true })
@@ -99,7 +111,12 @@ export function DepositPage() {
 
       try {
         setHistoryLoading(true)
-        const data = await depositService.getUserDeposits(user.id)
+        // 获取或创建 hz_users 记录
+        const hzUser = await hzUserService.getOrCreateUserFromAuth(user.email || '')
+        setHzUserId(hzUser.id)
+
+        // 获取充值记录
+        const data = await hzRechargeService.getAllRecharges({ uid: hzUser.id }, 100, 0)
         setDeposits(data)
       } catch (error: any) {
         console.error('获取充值记录失败:', error)
@@ -109,15 +126,15 @@ export function DepositPage() {
       }
     }
 
-    loadDeposits()
+    loadUserAndDeposits()
   }, [authLoading, user, navigate])
 
-  // 生成模拟地址
+  // 获取充值地址
   useEffect(() => {
-    if (selectedAsset && selectedNetwork) {
-      // 模拟生成地址
-      const mockAddress = `${selectedNetwork.id}_${selectedAsset.symbol}_${Math.random().toString(36).substring(2, 15)}`
-      setDepositAddress(mockAddress)
+    if (selectedAsset && selectedNetwork && selectedAsset.coinData) {
+      // 从数据库币种数据中获取充值地址
+      const address = selectedAsset.coinData.address || ''
+      setDepositAddress(address)
     } else {
       setDepositAddress('')
     }
@@ -130,29 +147,27 @@ export function DepositPage() {
   }
 
   // 过滤币种
-  const filteredAssets = SUPPORTED_ASSETS.filter(asset =>
+  const filteredAssets = supportedAssets.filter(asset =>
     asset.symbol.toLowerCase().includes(searchTerm.toLowerCase()) ||
     asset.name.toLowerCase().includes(searchTerm.toLowerCase())
   )
 
-  // 获取状态颜色
-  const getStatusColor = (status: Deposit['status']) => {
-    switch (status) {
-      case 'completed': return 'bg-green-500/20 text-green-400'
-      case 'confirming': return 'bg-yellow-500/20 text-yellow-400'
-      case 'pending': return 'bg-blue-500/20 text-blue-400'
-      case 'failed': return 'bg-red-500/20 text-red-400'
+  // 获取状态颜色（基于 hz_recharge.state）
+  const getStatusColor = (state: number) => {
+    switch (state) {
+      case 2: return 'bg-green-500/20 text-green-400' // 已完成
+      case 1: return 'bg-yellow-500/20 text-yellow-400' // 处理中
+      case 0: return 'bg-blue-500/20 text-blue-400' // 待处理
       default: return 'bg-gray-500/20 text-gray-400'
     }
   }
 
   // 获取状态文本
-  const getStatusText = (status: Deposit['status']) => {
-    switch (status) {
-      case 'completed': return '已完成'
-      case 'confirming': return '确认中'
-      case 'pending': return '待处理'
-      case 'failed': return '失败'
+  const getStatusText = (state: number) => {
+    switch (state) {
+      case 2: return '已完成'
+      case 1: return '处理中'
+      case 0: return '待处理'
       default: return '未知'
     }
   }
@@ -208,22 +223,36 @@ export function DepositPage() {
                   </div>
 
                   {/* 币种列表 */}
-                  <div className="space-y-2">
-                    {filteredAssets.map((asset) => (
-                      <div
-                        key={asset.symbol}
-                        onClick={() => setSelectedAsset(asset)}
-                        className="flex items-center gap-4 p-4 bg-white/5 rounded-lg hover:bg-white/10 transition-all cursor-pointer"
-                      >
-                        <img src={asset.icon} alt={asset.symbol} className="w-10 h-10 rounded-full" />
-                        <div className="flex-1">
-                          <div className="text-white font-semibold">{asset.symbol}</div>
-                          <div className="text-white/50 text-sm">{asset.name}</div>
+                  {assetsLoading ? (
+                    <div className="text-center py-8">
+                      <div className="w-8 h-8 mx-auto border-4 border-[#A3F030] border-t-transparent rounded-full animate-spin mb-2" />
+                      <p className="text-white/50 text-sm">加载币种中...</p>
+                    </div>
+                  ) : filteredAssets.length === 0 ? (
+                    <div className="text-center py-8">
+                      <p className="text-white/50">暂无可用币种</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {filteredAssets.map((asset) => (
+                        <div
+                          key={asset.symbol}
+                          onClick={() => setSelectedAsset(asset)}
+                          className="flex items-center gap-4 p-4 bg-white/5 rounded-lg hover:bg-white/10 transition-all cursor-pointer"
+                        >
+                          <img src={asset.icon} alt={asset.symbol} className="w-10 h-10 rounded-full object-cover" onError={(e) => {
+                            // 如果图片加载失败，使用默认图标
+                            (e.target as HTMLImageElement).src = 'https://assets.coingecko.com/coins/images/325/small/Tether.png';
+                          }} />
+                          <div className="flex-1">
+                            <div className="text-white font-semibold">{asset.symbol}</div>
+                            <div className="text-white/50 text-sm">{asset.name}</div>
+                          </div>
+                          <ChevronRight className="w-5 h-5 text-white/40" />
                         </div>
-                        <ChevronRight className="w-5 h-5 text-white/40" />
-                      </div>
-                    ))}
-                  </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </Card>
             ) : !selectedNetwork ? (
@@ -309,11 +338,29 @@ export function DepositPage() {
                       </div>
 
                       {/* 二维码 */}
-                      <div className="flex justify-center">
-                        <div className="w-48 h-48 bg-white rounded-lg flex items-center justify-center">
-                          <QrCode className="w-40 h-40 text-black" />
+                      {selectedAsset.coinData?.addressqr ? (
+                        <div className="flex justify-center">
+                          <img 
+                            src={selectedAsset.coinData.addressqr} 
+                            alt="QR Code" 
+                            className="w-48 h-48 rounded-lg object-contain bg-white p-2"
+                            onError={(e) => {
+                              // 如果二维码加载失败，显示占位符
+                              (e.target as HTMLImageElement).style.display = 'none';
+                              const parent = (e.target as HTMLImageElement).parentElement;
+                              if (parent) {
+                                parent.innerHTML = '<div class="w-48 h-48 bg-white rounded-lg flex items-center justify-center"><svg class="w-40 h-40 text-black" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2.01M19 8h2.01M12 16h.01M16 4h.01M8 4h.01M4 4h.01M4 20h.01M8 20h.01M12 20h.01M16 20h.01M20 20h.01" /></svg></div>';
+                              }
+                            }}
+                          />
                         </div>
-                      </div>
+                      ) : (
+                        <div className="flex justify-center">
+                          <div className="w-48 h-48 bg-white rounded-lg flex items-center justify-center">
+                            <QrCode className="w-40 h-40 text-black" />
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </Card>
@@ -381,12 +428,12 @@ export function DepositPage() {
                           </div>
                           <div>
                             <div className="flex items-center gap-2 mb-1">
-                              <span className="text-white font-semibold">充值 {deposit.asset}</span>
-                              <Badge className={getStatusColor(deposit.status)} variant="outline">
-                                {getStatusText(deposit.status)}
+                              <span className="text-white font-semibold">充值 {deposit.coinname}</span>
+                              <Badge className={getStatusColor(deposit.state)} variant="outline">
+                                {getStatusText(deposit.state)}
                               </Badge>
                             </div>
-                            <div className="text-white/50 text-sm">{new Date(deposit.created_at).toLocaleString('zh-CN', {
+                            <div className="text-white/50 text-sm">{new Date(deposit.addtime).toLocaleString('zh-CN', {
                               year: 'numeric',
                               month: '2-digit',
                               day: '2-digit',
@@ -397,21 +444,19 @@ export function DepositPage() {
                           </div>
                         </div>
                         <div className="text-right">
-                          <div className="text-green-400 font-semibold">+{deposit.amount} {deposit.asset}</div>
-                          <div className="text-white/50 text-sm">{deposit.network}</div>
+                          <div className="text-green-400 font-semibold">+{Number(deposit.num).toFixed(2)} {deposit.coinname}</div>
+                          {deposit.txid && (
+                            <div className="text-white/50 text-sm font-mono text-xs">
+                              {deposit.txid.substring(0, 8)}...{deposit.txid.substring(deposit.txid.length - 6)}
+                            </div>
+                          )}
                         </div>
                       </div>
-                      {deposit.status === 'confirming' && deposit.required_confirmations > 0 && (
+                      {deposit.state === 1 && (
                         <div className="mt-3 pt-3 border-t border-white/10">
                           <div className="flex items-center justify-between text-sm">
-                            <span className="text-white/50">确认进度</span>
-                            <span className="text-[#A3F030]">{deposit.confirmations}/{deposit.required_confirmations}</span>
-                          </div>
-                          <div className="mt-2 h-1.5 bg-white/10 rounded-full overflow-hidden">
-                            <div 
-                              className="h-full bg-[#A3F030] transition-all"
-                              style={{ width: `${Math.min(100, (deposit.confirmations / deposit.required_confirmations) * 100)}%` }}
-                            />
+                            <span className="text-white/50">处理中</span>
+                            <span className="text-[#A3F030]">等待确认</span>
                           </div>
                         </div>
                       )}

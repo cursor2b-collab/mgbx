@@ -20,11 +20,22 @@ import {
   Users,
   Banknote,
   Image as ImageIcon,
-  UserPlus
+  UserPlus,
+  Eye,
+  EyeOff,
+  DollarSign,
+  Gift,
+  HelpCircle,
+  UserCircle,
+  FileText,
+  Target,
+  ChevronDown,
+  Copy
 } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
+import { hzUserService } from '../services/hzDatabase'
 import { ImageWithFallback } from './figma/ImageWithFallback'
-import { motion } from 'motion/react'
+import { motion, AnimatePresence } from 'motion/react'
 import * as echarts from 'echarts'
 
 // 市场数据
@@ -34,6 +45,7 @@ interface MarketData {
   price: string
   change: string
   icon: string
+  volume: string // 24小时成交额
 }
 
 const QUICK_ACTIONS = [
@@ -193,12 +205,50 @@ function getIconForSymbol(symbol: string) {
 
 export function MobileHomepage() {
   const navigate = useNavigate()
-  const { isAuthenticated } = useAuth()
+  const { isAuthenticated, user } = useAuth()
   const [activeTab, setActiveTab] = useState<'contracts' | 'spot' | 'gainers'>('contracts')
   const [marketData, setMarketData] = useState<MarketData[]>([])
   const [loading, setLoading] = useState(true)
   const [klineData, setKlineData] = useState<{ [key: string]: KlineData[] }>({})
   const chartRefs = useRef<(HTMLDivElement | null)[]>([])
+  
+  // 资产相关状态
+  const [totalBalance, setTotalBalance] = useState(0)
+  const [usdValue, setUsdValue] = useState(0)
+  const [todayProfit, setTodayProfit] = useState(0)
+  const [todayProfitPercent, setTodayProfitPercent] = useState(0)
+  const [hideBalance, setHideBalance] = useState(false)
+  const [assetsLoading, setAssetsLoading] = useState(true)
+  
+  // 图片列表
+  const imageList = [
+    '/imges/2025112613030114256000012.jpg',
+    '/imges/2025112806190580856000070.jpg',
+    '/imges/2025112904025072456000006.jpg',
+    '/imges/2025120210042021271000001.jpg',
+    '/imges/2025120210153581456000013.jpg',
+    '/imges/2025120310441234477000010.jpg',
+    '/imges/2025121009593517256000016.jpg',
+    '/imges/2025121206322281156000010.jpg',
+    '/imges/2025121509503085256000094.jpg',
+    '/imges/2025121512023727556000136.jpg',
+    '/imges/2025121708433854256000028.jpg',
+    '/imges/2025121710330952756000065.jpg',
+  ]
+  const [currentImageIndex, setCurrentImageIndex] = useState(0)
+  const [isFirstLoad, setIsFirstLoad] = useState(true)
+  
+  // 服务功能列表
+  const serviceFeatures = [
+    { icon: FileText, label: '合约', href: '/trading' },
+    { icon: Users, label: '邀请中心', href: '/invite', badge: '01' },
+    { icon: Gift, label: '红包', href: '/redpacket' },
+    { icon: Wallet, label: '理财', href: '/lending' },
+    { icon: Copy, label: '跟单', href: '/mobile?tab=copy' },
+    { icon: Target, label: 'Echo', href: '/echo' },
+    { icon: HelpCircle, label: '帮助中心', href: '/help' },
+    { icon: UserCircle, label: '在线客服', href: '/support' },
+  ]
 
   // 获取市场数据
   useEffect(() => {
@@ -218,7 +268,7 @@ export function MobileHomepage() {
         
         if (activeTab === 'contracts') {
           // 热门合约 - 主流币种
-          symbols = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'BNBUSDT', 'XRPUSDT']
+          symbols = ['BTCUSDT', 'ETHUSDT', 'BNBUSDT', 'XRPUSDT', 'SOLUSDT']
           filteredData = data
             .filter((item: any) => symbols.includes(item.symbol))
             .map((item: any) => {
@@ -227,12 +277,21 @@ export function MobileHomepage() {
                 ? price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
                 : price.toFixed(6)
               
+              // 格式化成交额
+              const volume = parseFloat(item.quoteVolume || item.volume || 0)
+              const formattedVolume = volume >= 1000000000
+                ? `$${(volume / 1000000000).toFixed(2)}B`
+                : volume >= 1000000
+                ? `$${(volume / 1000000).toFixed(2)}M`
+                : `$${volume.toFixed(2)}`
+              
               return {
                 symbol: item.symbol,
                 name: item.symbol.replace('USDT', ''),
                 price: formattedPrice,
                 change: parseFloat(item.priceChangePercent).toFixed(2),
-                icon: getIconForSymbol(item.symbol)
+                icon: getIconForSymbol(item.symbol),
+                volume: formattedVolume
               }
             })
         } else if (activeTab === 'spot') {
@@ -246,12 +305,21 @@ export function MobileHomepage() {
                 ? price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
                 : price.toFixed(6)
               
+              // 格式化成交额
+              const volume = parseFloat(item.quoteVolume || item.volume || 0)
+              const formattedVolume = volume >= 1000000000
+                ? `$${(volume / 1000000000).toFixed(2)}B`
+                : volume >= 1000000
+                ? `$${(volume / 1000000).toFixed(2)}M`
+                : `$${volume.toFixed(2)}`
+              
               return {
                 symbol: item.symbol,
                 name: item.symbol.replace('USDT', ''),
                 price: formattedPrice,
                 change: parseFloat(item.priceChangePercent).toFixed(2),
-                icon: getIconForSymbol(item.symbol)
+                icon: getIconForSymbol(item.symbol),
+                volume: formattedVolume
               }
             })
         } else if (activeTab === 'gainers') {
@@ -271,12 +339,21 @@ export function MobileHomepage() {
                 ? price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
                 : price.toFixed(6)
               
+              // 格式化成交额
+              const volume = parseFloat(item.quoteVolume || item.volume || 0)
+              const formattedVolume = volume >= 1000000000
+                ? `$${(volume / 1000000000).toFixed(2)}B`
+                : volume >= 1000000
+                ? `$${(volume / 1000000).toFixed(2)}M`
+                : `$${volume.toFixed(2)}`
+              
               return {
                 symbol: item.symbol,
                 name: item.symbol.replace('USDT', ''),
                 price: formattedPrice,
                 change: parseFloat(item.priceChangePercent).toFixed(2),
-                icon: getIconForSymbol(item.symbol)
+                icon: getIconForSymbol(item.symbol),
+                volume: formattedVolume
               }
             })
         }
@@ -288,27 +365,27 @@ export function MobileHomepage() {
         
         if (activeTab === 'contracts') {
           mockData = [
-            { symbol: 'BTCUSDT', name: 'BTC', price: '67,234.50', change: '2.34', icon: getIconForSymbol('BTCUSDT') },
-            { symbol: 'ETHUSDT', name: 'ETH', price: '3,456.78', change: '-1.23', icon: getIconForSymbol('ETHUSDT') },
-            { symbol: 'SOLUSDT', name: 'SOL', price: '145.23', change: '5.67', icon: getIconForSymbol('SOLUSDT') },
-            { symbol: 'BNBUSDT', name: 'BNB', price: '345.67', change: '3.45', icon: getIconForSymbol('BNBUSDT') },
-            { symbol: 'XRPUSDT', name: 'XRP', price: '0.623400', change: '1.56', icon: getIconForSymbol('XRPUSDT') },
+            { symbol: 'BTCUSDT', name: 'BTC', price: '67,234.50', change: '2.34', icon: getIconForSymbol('BTCUSDT'), volume: '$264.18M' },
+            { symbol: 'ETHUSDT', name: 'ETH', price: '3,456.78', change: '-1.23', icon: getIconForSymbol('ETHUSDT'), volume: '$2.32B' },
+            { symbol: 'BNBUSDT', name: 'BNB', price: '345.67', change: '3.45', icon: getIconForSymbol('BNBUSDT'), volume: '$845.80M' },
+            { symbol: 'XRPUSDT', name: 'XRP', price: '0.623400', change: '1.56', icon: getIconForSymbol('XRPUSDT'), volume: '$3.78M' },
+            { symbol: 'SOLUSDT', name: 'SOL', price: '145.23', change: '5.67', icon: getIconForSymbol('SOLUSDT'), volume: '$73.11M' },
           ]
         } else if (activeTab === 'spot') {
           mockData = [
-            { symbol: 'ADAUSDT', name: 'ADA', price: '0.485600', change: '2.45', icon: getIconForSymbol('ADAUSDT') },
-            { symbol: 'DOGEUSDT', name: 'DOGE', price: '0.087500', change: '4.12', icon: getIconForSymbol('DOGEUSDT') },
-            { symbol: 'DOTUSDT', name: 'DOT', price: '6.234000', change: '-0.89', icon: getIconForSymbol('DOTUSDT') },
-            { symbol: 'MATICUSDT', name: 'MATIC', price: '0.876500', change: '1.67', icon: getIconForSymbol('MATICUSDT') },
-            { symbol: 'AVAXUSDT', name: 'AVAX', price: '34.560000', change: '3.21', icon: getIconForSymbol('AVAXUSDT') },
+            { symbol: 'ADAUSDT', name: 'ADA', price: '0.485600', change: '2.45', icon: getIconForSymbol('ADAUSDT'), volume: '$1.23M' },
+            { symbol: 'DOGEUSDT', name: 'DOGE', price: '0.087500', change: '4.12', icon: getIconForSymbol('DOGEUSDT'), volume: '$14.42M' },
+            { symbol: 'DOTUSDT', name: 'DOT', price: '6.234000', change: '-0.89', icon: getIconForSymbol('DOTUSDT'), volume: '$5.67M' },
+            { symbol: 'MATICUSDT', name: 'MATIC', price: '0.876500', change: '1.67', icon: getIconForSymbol('MATICUSDT'), volume: '$8.90M' },
+            { symbol: 'AVAXUSDT', name: 'AVAX', price: '34.560000', change: '3.21', icon: getIconForSymbol('AVAXUSDT'), volume: '$12.34M' },
           ]
         } else if (activeTab === 'gainers') {
           mockData = [
-            { symbol: 'INJUSDT', name: 'INJ', price: '28.450000', change: '12.45', icon: getIconForSymbol('INJUSDT') },
-            { symbol: 'ARBUSDT', name: 'ARB', price: '1.234000', change: '9.87', icon: getIconForSymbol('ARBUSDT') },
-            { symbol: 'OPUSDT', name: 'OP', price: '2.567000', change: '8.56', icon: getIconForSymbol('OPUSDT') },
-            { symbol: 'LINKUSDT', name: 'LINK', price: '15.340000', change: '7.23', icon: getIconForSymbol('LINKUSDT') },
-            { symbol: 'NEARUSDT', name: 'NEAR', price: '3.450000', change: '6.78', icon: getIconForSymbol('NEARUSDT') },
+            { symbol: 'INJUSDT', name: 'INJ', price: '28.450000', change: '12.45', icon: getIconForSymbol('INJUSDT'), volume: '$5.67M' },
+            { symbol: 'ARBUSDT', name: 'ARB', price: '1.234000', change: '9.87', icon: getIconForSymbol('ARBUSDT'), volume: '$3.45M' },
+            { symbol: 'OPUSDT', name: 'OP', price: '2.567000', change: '8.56', icon: getIconForSymbol('OPUSDT'), volume: '$7.89M' },
+            { symbol: 'LINKUSDT', name: 'LINK', price: '15.340000', change: '7.23', icon: getIconForSymbol('LINKUSDT'), volume: '$9.12M' },
+            { symbol: 'NEARUSDT', name: 'NEAR', price: '3.450000', change: '6.78', icon: getIconForSymbol('NEARUSDT'), volume: '$4.56M' },
           ]
         }
         
@@ -434,369 +511,144 @@ export function MobileHomepage() {
     }
   }, [marketData, klineData])
 
-  // 无缝循环滚动效果
-  const scrollContainerRef = useRef<HTMLDivElement>(null)
-  const [isPaused, setIsPaused] = useState(false)
-  
+  // 图片自动切换
   useEffect(() => {
-    const container = scrollContainerRef.current
-    if (!container) return
-
-    let scrollPosition = 0
-    const scrollSpeed = 0.3 // 滚动速度（降低到0.3，更慢更舒适）
-    let animationFrameId: number
+    // 确保有图片列表
+    if (imageList.length === 0) {
+      console.warn('图片列表为空')
+      return
+    }
     
-    // 计算单组卡片的宽度（5个卡片 * 160px宽度 + 4个间隙 * 12px）
-    const cardWidth = 160
-    const gap = 12
-    const cardsCount = 5
-    const singleSetWidth = (cardWidth + gap) * cardsCount
-
-    const autoScroll = () => {
-      if (!container || isPaused) {
-        animationFrameId = requestAnimationFrame(autoScroll)
-        return
-      }
-
-      scrollPosition += scrollSpeed
-      
-      // 当滚动超过第一组内容时，无缝重置
-      if (scrollPosition >= singleSetWidth) {
-        scrollPosition = 0
-      }
-      
-      container.scrollLeft = scrollPosition
-      animationFrameId = requestAnimationFrame(autoScroll)
+    // 第一张图片加载后，标记为已加载
+    if (isFirstLoad) {
+      const timer = setTimeout(() => {
+        setIsFirstLoad(false)
+      }, 100)
+      return () => clearTimeout(timer)
     }
+    
+    const interval = setInterval(() => {
+      setCurrentImageIndex((prev) => (prev + 1) % imageList.length)
+    }, 3000) // 每3秒切换一次
 
-    animationFrameId = requestAnimationFrame(autoScroll)
-
-    return () => {
-      cancelAnimationFrame(animationFrameId)
-    }
-  }, [isPaused])
+    return () => clearInterval(interval)
+  }, [imageList.length, isFirstLoad])
 
   return (
     <div className="min-h-screen bg-black pb-32">
-      {/* Hero Section with Welcome Bonus */}
-      <section className="px-4 pt-20 pb-8">
+      {/* 资产总览 Section */}
+      <section className="px-4 pt-4 pb-6">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
-          className="text-center"
         >
-          {/* 3D Icon */}
-          <div className="mb-6 flex justify-center">
-            <div className="relative w-48 h-48">
-              {/* Banner Image */}
-              <div className="w-full h-full flex items-center justify-center">
-                <ImageWithFallback
-                  src="https://cy-747263170.imgix.net/888.png"
-                  alt="新人禮包"
-                  className="w-full h-full object-cover rounded-2xl"
-                  style={{
-                    animation: 'float 3s ease-in-out infinite'
-                  }}
-                />
-              </div>
-              {/* Glow Effect */}
-              <div className="absolute inset-0 bg-[#A3F030] opacity-20 blur-3xl -z-10"></div>
+          {/* 资产总览标题 */}
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <h2 className="text-white text-lg font-semibold">资产总览(USDT)</h2>
+              <button
+                onClick={() => setHideBalance(!hideBalance)}
+                className="text-white/50 hover:text-white transition-colors"
+              >
+                {hideBalance ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
             </div>
           </div>
 
-          {/* Title */}
-          <h1 className="text-4xl mb-2">
-            <span className="text-[#A3F030]">$10,000</span>
-            <span className="text-white"> 新人禮包</span>
-          </h1>
+          {/* 余额显示 */}
+          <div className="mb-4">
+            <div className="text-4xl font-bold text-white mb-2">
+              {hideBalance ? '****' : totalBalance.toFixed(4)}
+            </div>
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-white/50 text-sm">
+                ≈${hideBalance ? '****' : usdValue.toFixed(2)}
+              </span>
+              <ChevronDown className="w-4 h-4 text-white/50" />
+            </div>
+            <div className="flex items-center gap-2 mb-4">
+              <span className="text-[#A3F030] text-sm">
+                今日收益+${hideBalance ? '****' : todayProfit.toFixed(2)} ({todayProfitPercent >= 0 ? '+' : ''}{hideBalance ? '**' : todayProfitPercent.toFixed(2)}%)
+              </span>
+            </div>
+          </div>
 
-          {/* Subtitle */}
-          <p className="text-gray-400 mb-6">解鎖新手獎勵</p>
-
-          {/* CTA Button */}
+          {/* 充值按钮 */}
           <Button
-            onClick={() => navigate(isAuthenticated ? '/trading' : '/login')}
-            className="w-full max-w-xs bg-[#A3F030] hover:bg-[#8FD622] text-black rounded-full py-6 text-lg transition-all duration-300 shadow-lg hover:shadow-xl"
+            onClick={() => navigate('/deposit')}
+            className="w-full bg-[#A3F030] hover:bg-[#8FD622] text-black rounded-xl py-3 text-base font-semibold mb-6"
           >
-            {isAuthenticated ? '開始交易' : '註冊/登入'}
+            充值
           </Button>
 
-          {/* CTA Animation */}
-          <div className="relative mt-10 h-40 overflow-hidden flex items-center justify-center">
-            <div className="absolute inset-0 flex items-center justify-center">
-              <video
-                className="w-full h-full object-contain opacity-100"
-                autoPlay
-                loop
-                muted
-                playsInline
-                preload="auto"
-                poster="https://www.okx.com/cdn/assets/imgs/2210/2763D233C494439D.jpg?x-oss-process=image/format,webp/ignore-error,1"
-                style={{ mixBlendMode: 'normal', filter: 'contrast(1.15) brightness(1.05)' }}
-              >
-                <source
-                  src="https://www.okx.com/cdn/assets/files/2210/1F383F502741A3F160C6.mp4"
-                  type="video/mp4"
-                />
-                <source
-                  src="https://www.okx.com/cdn/assets/files/2210/D47D930F643E7A00.webm"
-                  type="video/webm"
-                />
-              </video>
-            </div>
+          {/* 服务功能网格 */}
+          <div className="grid grid-cols-4 gap-4 mb-4">
+            {serviceFeatures.map((feature, index) => {
+              const Icon = feature.icon
+              return (
+                <motion.button
+                  key={feature.label}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.4, delay: index * 0.05 }}
+                  onClick={() => feature.href && navigate(feature.href)}
+                  className="flex flex-col items-center justify-center gap-2 group relative"
+                >
+                  <div className="relative">
+                    <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center group-hover:bg-white/10 transition-colors">
+                      <Icon className="w-6 h-6 text-white" />
+                    </div>
+                    {feature.badge && (
+                      <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full text-xs flex items-center justify-center text-white font-semibold">
+                        {feature.badge}
+                      </span>
+                    )}
+                  </div>
+                  <span className="text-xs text-white/70 text-center leading-tight">{feature.label}</span>
+                </motion.button>
+              )
+            })}
+          </div>
+          
+          {/* 向下箭头提示（如果有更多功能） */}
+          <div className="flex justify-center mb-4">
+            <ChevronDown className="w-4 h-4 text-white/30" />
           </div>
         </motion.div>
       </section>
 
-      {/* Quick Actions */}
-      <section className="px-4 py-4 border-y border-gray-800">
-        <div className="grid grid-cols-4 gap-4">
-          {QUICK_ACTIONS.map((action, index) => (
-            <motion.button
-              key={action.label}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, delay: index * 0.1 }}
-              className="flex flex-col items-center justify-center gap-2 group"
-              onClick={() => {
-                if (action.href) {
-                  navigate(action.href)
-                }
-              }}
-            >
-              <ImageWithFallback
-                src={action.imageUrl}
-                alt={action.label}
-                className="w-14 h-14 object-contain group-hover:opacity-80 transition-opacity"
-              />
-              <span
-                className="text-xs text-gray-300 text-center"
-                style={['邀请返佣', 'KYC认证'].includes(action.label) ? { transform: 'translateX(-4px)' } : undefined}
-              >
-                {action.label}
-              </span>
-            </motion.button>
-          ))}
-        </div>
-      </section>
-
-      {/* Promotional Cards */}
-      <section className="py-6">
-        <div className="px-4 mb-3 flex items-center justify-between">
-          <h2 className="text-white">市场行情</h2>
-          <button className="text-xs text-gray-400">更多 →</button>
-        </div>
-        <div 
-          ref={scrollContainerRef} 
-          className="overflow-x-auto scrollbar-hide"
-          onMouseEnter={() => setIsPaused(true)}
-          onMouseLeave={() => setIsPaused(false)}
-          onTouchStart={() => setIsPaused(true)}
-          onTouchEnd={() => setIsPaused(false)}
-        >
-          <div className="flex gap-3 px-4 pb-2" style={{ width: 'max-content' }}>
-            {/* BTC Card */}
-            <motion.button
-              type="button"
-              onClick={() => navigate(`/trading?symbol=BTCUSDT`)}
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.4 }}
-              className="min-w-[160px] bg-gradient-to-br from-gray-900 to-black border border-gray-800 rounded-xl p-4 relative overflow-hidden text-left"
-            >
-              <div className="absolute top-0 right-0 w-16 h-16 bg-[#A3F030] opacity-5 blur-xl"></div>
-              <div className="relative z-10">
-                <div className="flex items-center gap-2 mb-2">
-                  <ImageWithFallback
-                    src="https://assets.coingecko.com/coins/images/1/small/bitcoin.png"
-                    alt="BTC"
-                    className="w-6 h-6"
-                  />
-                  <span className="text-white text-sm">BTC</span>
-                </div>
-                <div className="text-xl text-white mb-1">
-                  {marketData.find(m => m.symbol === 'BTCUSDT')?.price || '$43,521'}
-                </div>
-                <div className={`flex items-center gap-1 text-xs ${
-                  parseFloat(marketData.find(m => m.symbol === 'BTCUSDT')?.change || '2.34') >= 0 
-                    ? 'text-[#A3F030]' 
-                    : 'text-red-400'
-                }`}>
-                  <TrendingUp className={`w-3 h-3 ${
-                    parseFloat(marketData.find(m => m.symbol === 'BTCUSDT')?.change || '2.34') >= 0 
-                      ? '' 
-                      : 'rotate-180'
-                  }`} />
-                  <span>{marketData.find(m => m.symbol === 'BTCUSDT')?.change || '+2.34'}%</span>
-                </div>
-                <SimpleBarChart 
-                  data={klineData['BTCUSDT'] || []} 
-                  isPositive={parseFloat(marketData.find(m => m.symbol === 'BTCUSDT')?.change || '2.34') >= 0}
+      {/* 图片轮播 */}
+      <section className="pt-1 pb-2">
+        <div className="px-4">
+          <div className="relative w-full">
+            {imageList.length > 0 && (
+              <AnimatePresence mode="wait">
+                <motion.img
+                  key={currentImageIndex}
+                  src={imageList[currentImageIndex]}
+                  alt={`Market ${currentImageIndex + 1}`}
+                  className="w-full h-auto object-contain block rounded-xl max-h-48"
+                  initial={isFirstLoad ? { opacity: 1, x: 0 } : { opacity: 0, x: '100%' }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: '-100%' }}
+                  transition={{ 
+                    duration: 0.4,
+                    ease: [0.4, 0, 0.2, 1]
+                  }}
+                  onError={(e) => {
+                    console.error('图片加载失败:', imageList[currentImageIndex]);
+                    // 如果图片加载失败，显示占位符
+                    (e.target as HTMLImageElement).src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="400" height="300"%3E%3Crect width="400" height="300" fill="%231a1a1a"/%3E%3Ctext x="50%25" y="50%25" text-anchor="middle" dy=".3em" fill="%23fff" font-size="16"%3E图片加载失败%3C/text%3E%3C/svg%3E';
+                  }}
                 />
+              </AnimatePresence>
+            )}
+            {imageList.length === 0 && (
+              <div className="w-full flex items-center justify-center text-white/50 py-20 rounded-xl bg-black">
+                暂无图片
               </div>
-            </motion.button>
-
-            {/* ETH Card */}
-            <motion.button
-              type="button"
-              onClick={() => navigate(`/trading?symbol=ETHUSDT`)}
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.4, delay: 0.1 }}
-              className="min-w-[160px] bg-gradient-to-br from-gray-900 to-black border border-gray-800 rounded-xl p-4 relative overflow-hidden text-left"
-            >
-              <div className="absolute top-0 right-0 w-16 h-16 bg-blue-500 opacity-5 blur-xl"></div>
-              <div className="relative z-10">
-                <div className="flex items-center gap-2 mb-2">
-                  <ImageWithFallback
-                    src="https://assets.coingecko.com/coins/images/279/small/ethereum.png"
-                    alt="ETH"
-                    className="w-6 h-6"
-                  />
-                  <span className="text-white text-sm">ETH</span>
-                </div>
-                <div className="text-xl text-white mb-1">
-                  {marketData.find(m => m.symbol === 'ETHUSDT')?.price || '$2,287'}
-                </div>
-                <div className={`flex items-center gap-1 text-xs ${
-                  parseFloat(marketData.find(m => m.symbol === 'ETHUSDT')?.change || '1.89') >= 0 
-                    ? 'text-[#A3F030]' 
-                    : 'text-red-400'
-                }`}>
-                  <TrendingUp className={`w-3 h-3 ${
-                    parseFloat(marketData.find(m => m.symbol === 'ETHUSDT')?.change || '1.89') >= 0 
-                      ? '' 
-                      : 'rotate-180'
-                  }`} />
-                  <span>{marketData.find(m => m.symbol === 'ETHUSDT')?.change || '+1.89'}%</span>
-                </div>
-                <SimpleBarChart 
-                  data={klineData['ETHUSDT'] || []} 
-                  isPositive={parseFloat(marketData.find(m => m.symbol === 'ETHUSDT')?.change || '1.89') >= 0}
-                />
-              </div>
-            </motion.button>
-
-            {/* SOL Card */}
-            <motion.button
-              type="button"
-              onClick={() => navigate(`/trading?symbol=SOLUSDT`)}
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.4, delay: 0.2 }}
-              className="min-w-[160px] bg-gradient-to-br from-gray-900 to-black border border-gray-800 rounded-xl p-4 relative overflow-hidden text-left"
-            >
-              <div className="absolute top-0 right-0 w-16 h-16 bg-purple-500 opacity-5 blur-xl"></div>
-              <div className="relative z-10">
-                <div className="flex items-center gap-2 mb-2">
-                  <ImageWithFallback
-                    src="https://assets.coingecko.com/coins/images/4128/small/solana.png"
-                    alt="SOL"
-                    className="w-6 h-6"
-                  />
-                  <span className="text-white text-sm">SOL</span>
-                </div>
-                <div className="text-xl text-white mb-1">
-                  {marketData.find(m => m.symbol === 'SOLUSDT')?.price || '$98.45'}
-                </div>
-                <div className={`flex items-center gap-1 text-xs ${
-                  parseFloat(marketData.find(m => m.symbol === 'SOLUSDT')?.change || '-0.56') >= 0 
-                    ? 'text-[#A3F030]' 
-                    : 'text-red-400'
-                }`}>
-                  <TrendingUp className={`w-3 h-3 ${
-                    parseFloat(marketData.find(m => m.symbol === 'SOLUSDT')?.change || '-0.56') >= 0 
-                      ? '' 
-                      : 'rotate-180'
-                  }`} />
-                  <span>{marketData.find(m => m.symbol === 'SOLUSDT')?.change || '-0.56'}%</span>
-                </div>
-                <SimpleBarChart 
-                  data={klineData['SOLUSDT'] || []} 
-                  isPositive={parseFloat(marketData.find(m => m.symbol === 'SOLUSDT')?.change || '-0.56') >= 0}
-                />
-              </div>
-            </motion.button>
-
-            {/* BNB Card */}
-            <motion.button
-              type="button"
-              onClick={() => navigate(`/trading?symbol=BNBUSDT`)}
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.4, delay: 0.3 }}
-              className="min-w-[160px] bg-gradient-to-br from-gray-900 to-black border border-gray-800 rounded-xl p-4 relative overflow-hidden text-left"
-            >
-              <div className="absolute top-0 right-0 w-16 h-16 bg-yellow-500 opacity-5 blur-xl"></div>
-              <div className="relative z-10">
-                <div className="flex items-center gap-2 mb-2">
-                  <ImageWithFallback
-                    src="https://assets.coingecko.com/coins/images/825/small/bnb-icon2_2x.png"
-                    alt="BNB"
-                    className="w-6 h-6"
-                  />
-                  <span className="text-white text-sm">BNB</span>
-                </div>
-                <div className="text-xl text-white mb-1">
-                  {marketData.find(m => m.symbol === 'BNBUSDT')?.price || '$312.87'}
-                </div>
-                <div className={`flex items-center gap-1 text-xs ${
-                  parseFloat(marketData.find(m => m.symbol === 'BNBUSDT')?.change || '3.12') >= 0 
-                    ? 'text-[#A3F030]' 
-                    : 'text-red-400'
-                }`}>
-                  <TrendingUp className={`w-3 h-3 ${
-                    parseFloat(marketData.find(m => m.symbol === 'BNBUSDT')?.change || '3.12') >= 0 
-                      ? '' 
-                      : 'rotate-180'
-                  }`} />
-                  <span>{marketData.find(m => m.symbol === 'BNBUSDT')?.change || '+3.12'}%</span>
-                </div>
-                <SimpleBarChart 
-                  data={klineData['BNBUSDT'] || []} 
-                  isPositive={parseFloat(marketData.find(m => m.symbol === 'BNBUSDT')?.change || '3.12') >= 0}
-                />
-              </div>
-            </motion.button>
-
-            {/* XRP Card */}
-            <button
-              type="button"
-              onClick={() => navigate(`/trading?symbol=XRPUSDT`)}
-              className="min-w-[160px] bg-gradient-to-br from-gray-900 to-black border border-gray-800 rounded-xl p-4 relative overflow-hidden text-left"
-            >
-              <div className="absolute top-0 right-0 w-16 h-16 bg-gray-500 opacity-5 blur-xl"></div>
-              <div className="relative z-10">
-                <div className="flex items-center gap-2 mb-2">
-                  <ImageWithFallback
-                    src="https://assets.coingecko.com/coins/images/44/small/xrp-symbol-white-128.png"
-                    alt="XRP"
-                    className="w-6 h-6"
-                  />
-                  <span className="text-white text-sm">XRP</span>
-                </div>
-                <div className="text-xl text-white mb-1">
-                  {marketData.find(m => m.symbol === 'XRPUSDT')?.price || '$0.6234'}
-                </div>
-                <div className={`flex items-center gap-1 text-xs ${
-                  parseFloat(marketData.find(m => m.symbol === 'XRPUSDT')?.change || '1.23') >= 0 
-                    ? 'text-[#A3F030]' 
-                    : 'text-red-400'
-                }`}>
-                  <TrendingUp className={`w-3 h-3 ${
-                    parseFloat(marketData.find(m => m.symbol === 'XRPUSDT')?.change || '1.23') >= 0 
-                      ? '' 
-                      : 'rotate-180'
-                  }`} />
-                  <span>{marketData.find(m => m.symbol === 'XRPUSDT')?.change || '+1.23'}%</span>
-                </div>
-                <SimpleBarChart 
-                  data={klineData['XRPUSDT'] || []} 
-                  isPositive={parseFloat(marketData.find(m => m.symbol === 'XRPUSDT')?.change || '1.23') >= 0}
-                />
-              </div>
-            </button>
+            )}
           </div>
         </div>
       </section>
@@ -810,7 +662,7 @@ export function MobileHomepage() {
             onClick={() => navigate('/markets')}
             className="text-xs text-gray-400 hover:text-white transition-colors"
           >
-            更多 →
+            更多
           </button>
         </div>
 
@@ -857,10 +709,9 @@ export function MobileHomepage() {
             {/* Table Header */}
             <thead>
               <tr className="border-b border-white/10">
-                <th className="text-left py-2.5 text-gray-500 text-xs pl-0 w-[75px]">名稱</th>
-                <th className="text-right py-2.5 text-gray-500 text-xs w-[75px]">價格</th>
-                <th className="text-right py-2.5 text-gray-500 text-xs w-[60px]">漲跌</th>
-                <th className="text-center py-2.5 text-gray-500 text-xs w-[65px]">走勢</th>
+                <th className="text-left py-2.5 text-gray-500 text-xs pl-0">名稱 / 成交額</th>
+                <th className="text-right py-2.5 text-gray-500 text-xs">最新價</th>
+                <th className="text-right py-2.5 text-gray-500 text-xs pr-0">24H漲跌</th>
               </tr>
             </thead>
 
@@ -868,58 +719,61 @@ export function MobileHomepage() {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={4} className="py-8 text-center text-gray-500 text-sm">
+                  <td colSpan={3} className="py-8 text-center text-gray-500 text-sm">
                     加載中...
                   </td>
                 </tr>
               ) : (
-                marketData.map((item, index) => (
-                  <tr
-                    key={item.symbol}
-                    onClick={() => navigate(`/trading?symbol=${item.symbol}`)}
-                    className="border-b border-white/5 hover:bg-[#1A1C1E] transition-colors group cursor-pointer active:bg-[#252729]"
-                  >
-                    {/* Symbol */}
-                    <td className="py-3 pl-0">
-                      <div className="flex items-center gap-1">
-                        <ImageWithFallback
-                          src={getIconForSymbol(item.symbol)}
-                          alt={item.symbol.replace('USDT', '')}
-                          className="w-5 h-5"
-                        />
-                        <span className="text-white text-xs truncate">{item.symbol.replace('USDT', '')}</span>
-                      </div>
-                    </td>
+                marketData.map((item, index) => {
+                  const changeValue = parseFloat(item.change)
+                  const isPositive = changeValue >= 0
+                  
+                  return (
+                    <tr
+                      key={item.symbol}
+                      onClick={() => navigate(`/trading?symbol=${item.symbol}`)}
+                      className="border-b border-white/5 hover:bg-[#1A1C1E] transition-colors group cursor-pointer active:bg-[#252729]"
+                    >
+                      {/* Name / Volume */}
+                      <td className="py-3 pl-0">
+                        <div className="flex items-center gap-2">
+                          <ImageWithFallback
+                            src={getIconForSymbol(item.symbol)}
+                            alt={item.symbol.replace('USDT', '')}
+                            className="w-6 h-6 rounded-full flex-shrink-0"
+                          />
+                          <div className="flex flex-col min-w-0">
+                            <span className="text-white text-sm font-medium truncate">
+                              {item.symbol} 永續
+                            </span>
+                            <span className="text-gray-400 text-xs truncate">
+                              {item.volume}
+                            </span>
+                          </div>
+                        </div>
+                      </td>
 
-                    {/* Price */}
-                    <td className="py-3 text-right">
-                      <div className="text-white text-xs truncate">{item.price}</div>
-                    </td>
+                      {/* Price */}
+                      <td className="py-3 text-right">
+                        <div className="text-white text-sm font-medium">{item.price}</div>
+                      </td>
 
-                    {/* 24h Change */}
-                    <td className="py-3 text-right">
-                      <span
-                        className="text-xs whitespace-nowrap"
-                        style={{
-                          color: parseFloat(item.change) >= 0 ? '#00C087' : '#FF4D4F'
-                        }}
-                      >
-                        {parseFloat(item.change) >= 0 ? '+' : ''}
-                        {item.change}%
-                      </span>
-                    </td>
-
-                    {/* Chart */}
-                    <td className="py-3">
-                      <div className="flex justify-center">
-                        <div
-                          ref={(el) => (chartRefs.current[index] = el)}
-                          className="w-12 h-5"
-                        />
-                      </div>
-                    </td>
-                  </tr>
-                ))
+                      {/* 24h Change */}
+                      <td className="py-3 text-right pr-0">
+                        <span
+                          className={`inline-block px-2 py-1 rounded text-xs font-medium whitespace-nowrap ${
+                            isPositive 
+                              ? 'bg-green-500/20 text-green-400' 
+                              : 'bg-red-500/20 text-red-400'
+                          }`}
+                        >
+                          {isPositive ? '+' : ''}
+                          {item.change}%
+                        </span>
+                      </td>
+                    </tr>
+                  )
+                })
               )}
             </tbody>
           </table>
@@ -967,22 +821,24 @@ export function MobileHomepage() {
         </div>
       </section>
 
-      {/* CTA Section */}
-      <section className="px-4 py-8">
-        <Card className="bg-gradient-to-br from-gray-900 via-[#A3F030]/10 to-gray-900 border-[#A3F030]/30 p-8 text-center relative overflow-hidden">
-          <div className="absolute inset-0 bg-[#A3F030] opacity-5"></div>
-          <div className="relative z-10">
-            <h3 className="text-white text-2xl mb-3">開啓您的交易之旅</h3>
-            <p className="text-gray-400 mb-6">立即註冊，領取新人專屬禮包</p>
-            <Button
-              onClick={() => navigate(isAuthenticated ? '/trading' : '/login')}
-              className="bg-[#A3F030] hover:bg-[#8FD622] text-black px-8 py-4 rounded-full transition-all duration-300 shadow-lg hover:shadow-xl"
-            >
-              {isAuthenticated ? '立即交易' : '立即註冊'}
-            </Button>
-          </div>
-        </Card>
-      </section>
+      {/* CTA Section - 仅未登录时显示 */}
+      {!isAuthenticated && (
+        <section className="px-4 py-8">
+          <Card className="bg-gradient-to-br from-gray-900 via-[#A3F030]/10 to-gray-900 border-[#A3F030]/30 p-8 text-center relative overflow-hidden">
+            <div className="absolute inset-0 bg-[#A3F030] opacity-5"></div>
+            <div className="relative z-10">
+              <h3 className="text-white text-2xl mb-3">開啓您的交易之旅</h3>
+              <p className="text-gray-400 mb-6">立即註冊，領取新人專屬禮包</p>
+              <Button
+                onClick={() => navigate('/login')}
+                className="bg-[#A3F030] hover:bg-[#8FD622] text-black px-8 py-4 rounded-full transition-all duration-300 shadow-lg hover:shadow-xl"
+              >
+                立即註冊
+              </Button>
+            </div>
+          </Card>
+        </section>
+      )}
     </div>
   )
 }

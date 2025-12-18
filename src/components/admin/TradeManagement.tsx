@@ -164,22 +164,22 @@ export function TradeManagement() {
 
       {/* 统计卡片 */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
+        <div className="bg-white/5 backdrop-blur-lg border border-white/10 rounded-xl p-4 shadow-lg shadow-black/20">
           <p className="text-gray-400 text-sm">总交易数</p>
           <p className="text-2xl font-bold text-white mt-1">{totalTrades}</p>
           <p className="text-[#A3F030] text-xs mt-1">今日数据</p>
         </div>
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
+        <div className="bg-white/5 backdrop-blur-lg border border-white/10 rounded-xl p-4 shadow-lg shadow-black/20">
           <p className="text-gray-400 text-sm">成功交易</p>
           <p className="text-2xl font-bold text-white mt-1">{completedTrades}</p>
           <p className="text-[#A3F030] text-xs mt-1">{((completedTrades/totalTrades)*100).toFixed(1)}% 成功率</p>
         </div>
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
+        <div className="bg-white/5 backdrop-blur-lg border border-white/10 rounded-xl p-4 shadow-lg shadow-black/20">
           <p className="text-gray-400 text-sm">交易总额</p>
           <p className="text-2xl font-bold text-white mt-1">${totalVolume.toLocaleString()}</p>
           <p className="text-[#A3F030] text-xs mt-1">+12.5% vs 昨日</p>
         </div>
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
+        <div className="bg-white/5 backdrop-blur-lg border border-white/10 rounded-xl p-4 shadow-lg shadow-black/20">
           <p className="text-gray-400 text-sm">手续费收入</p>
           <p className="text-2xl font-bold text-white mt-1">${totalFees.toFixed(2)}</p>
           <p className="text-[#A3F030] text-xs mt-1">0.1% 费率</p>
@@ -187,7 +187,7 @@ export function TradeManagement() {
       </div>
 
       {/* 搜索和筛选 */}
-      <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
+      <div className="bg-white/5 backdrop-blur-lg border border-white/10 rounded-xl p-6 shadow-lg shadow-black/20">
         <div className="flex flex-col lg:flex-row gap-4">
           {/* 搜索框 */}
           <div className="flex-1 relative">
@@ -272,7 +272,7 @@ export function TradeManagement() {
       </div>
 
       {/* 交易列表 */}
-      <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+      <div className="bg-white/5 backdrop-blur-lg border border-white/10 rounded-xl overflow-hidden shadow-lg shadow-black/20">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
@@ -292,7 +292,7 @@ export function TradeManagement() {
             </thead>
             <tbody className="divide-y divide-slate-800">
               {filteredTrades.map((trade) => (
-                <tr key={trade.id} className="hover:bg-slate-800/50 transition-colors">
+                <tr key={trade.id} className="hover:bg-white/5 transition-colors">
                   <td className="px-6 py-4 text-white font-mono text-sm">
                     {trade.id}
                   </td>

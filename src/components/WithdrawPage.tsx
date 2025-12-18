@@ -19,7 +19,7 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuth } from '../hooks/useAuth'
-import { assetService, withdrawService, type Withdraw } from '../services/database'
+import { hzUserService, hzWithdrawService, hzWithdrawBankService, type HzWithdraw, type HzWithdrawBank } from '../services/hzDatabase'
 
 // 币种类型
 interface CryptoAsset {
@@ -67,6 +67,7 @@ export function WithdrawPage() {
   const [withdrawals, setWithdrawals] = useState<WithdrawHistoryItem[]>([])
   const [historyLoading, setHistoryLoading] = useState(true)
   const [assetsLoading, setAssetsLoading] = useState(true)
+  const [hzUserId, setHzUserId] = useState<number | null>(null)
 
   useEffect(() => {
     const loadData = async () => {
@@ -78,8 +79,43 @@ export function WithdrawPage() {
 
       try {
         setAssetsLoading(true)
-        const userAssets = await assetService.getUserAssets(user.id)
-        const formattedAssets = userAssets.map((asset) => mapAssetToCryptoAsset(asset))
+        // 获取或创建 hz_users 记录
+        const hzUser = await hzUserService.getOrCreateUserFromAuth(user.email || '')
+        setHzUserId(hzUser.id)
+
+        // 从 hz_users 获取余额并转换为资产格式
+        const formattedAssets: CryptoAsset[] = [
+          {
+            symbol: 'USDT',
+            name: 'Tether',
+            icon: 'https://assets.coingecko.com/coins/images/325/small/Tether.png',
+            balance: hzUser.usdtbalance || 0,
+            networks: [
+              { id: 'trc20', name: 'TRC20', fullName: 'Tron (TRC20)', minWithdraw: 10, maxWithdraw: 100000, fee: 1, estimatedTime: '10分钟' },
+              { id: 'erc20', name: 'ERC20', fullName: 'Ethereum (ERC20)', minWithdraw: 50, maxWithdraw: 100000, fee: 10, estimatedTime: '15分钟' },
+              { id: 'bep20', name: 'BEP20', fullName: 'BNB Smart Chain (BEP20)', minWithdraw: 10, maxWithdraw: 100000, fee: 0.8, estimatedTime: '5分钟' }
+            ]
+          },
+          {
+            symbol: 'BTC',
+            name: 'Bitcoin',
+            icon: 'https://assets.coingecko.com/coins/images/1/small/bitcoin.png',
+            balance: hzUser.btcbalance || 0,
+            networks: [
+              { id: 'bitcoin', name: 'Bitcoin', fullName: 'Bitcoin Network', minWithdraw: 0.001, maxWithdraw: 10, fee: 0.0005, estimatedTime: '1小时' }
+            ]
+          },
+          {
+            symbol: 'ETH',
+            name: 'Ethereum',
+            icon: 'https://assets.coingecko.com/coins/images/279/small/ethereum.png',
+            balance: hzUser.ethbalance || 0,
+            networks: [
+              { id: 'erc20', name: 'ERC20', fullName: 'Ethereum Network', minWithdraw: 0.05, maxWithdraw: 50, fee: 0.005, estimatedTime: '15分钟' }
+            ]
+          }
+        ].filter(asset => asset.balance > 0) // 只显示有余额的资产
+
         setAssets(formattedAssets)
       } catch (error: any) {
         console.error('获取用户资产失败:', error)
@@ -95,12 +131,40 @@ export function WithdrawPage() {
   useEffect(() => {
     const loadWithdrawals = async () => {
       if (authLoading) return
-      if (!user) return
+      if (!user || !hzUserId) return
 
       try {
         setHistoryLoading(true)
-        const data = await withdrawService.getUserWithdraws(user.id)
-        const formatted = data.map(mapWithdrawToHistoryItem)
+        // 获取加密货币提现记录
+        const cryptoWithdraws = await hzWithdrawService.getAllWithdraws({ uid: hzUserId }, 100, 0)
+        // 获取银行卡提现记录
+        const bankWithdraws = await hzWithdrawBankService.getAllWithdrawBanks({ uid: hzUserId }, 100, 0)
+        
+        // 合并并格式化记录
+        const formatted: WithdrawHistoryItem[] = [
+          ...cryptoWithdraws.map(w => ({
+            id: String(w.id),
+            asset: w.coinname,
+            network: 'crypto',
+            amount: Number(w.num),
+            fee: Number(w.fee || 0),
+            address: w.address || '',
+            status: w.state === 1 ? 'completed' : w.state === 2 ? 'rejected' : 'pending' as WithdrawStatus,
+            time: new Date(w.addtime).toLocaleString('zh-CN'),
+            txHash: w.txid || undefined,
+          })),
+          ...bankWithdraws.map(w => ({
+            id: String(w.id),
+            asset: w.coinname,
+            network: 'bank',
+            amount: Number(w.num),
+            fee: 0,
+            address: `${w.bankname || ''} ${w.bankaccount || ''}`,
+            status: w.state === 1 ? 'completed' : w.state === 2 ? 'rejected' : 'pending' as WithdrawStatus,
+            time: new Date(w.addtime).toLocaleString('zh-CN'),
+          }))
+        ].sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime())
+
         setWithdrawals(formatted)
       } catch (error: any) {
         console.error('获取提现记录失败:', error)
@@ -110,8 +174,10 @@ export function WithdrawPage() {
       }
     }
 
-    loadWithdrawals()
-  }, [authLoading, user])
+    if (hzUserId) {
+      loadWithdrawals()
+    }
+  }, [authLoading, user, hzUserId])
 
   const mapAssetToCryptoAsset = (asset: any): CryptoAsset => {
     const NETWORK_TEMPLATES: Record<string, Network[]> = {
@@ -143,18 +209,9 @@ export function WithdrawPage() {
     }
   }
 
-  const mapWithdrawToHistoryItem = (withdraw: Withdraw): WithdrawHistoryItem => {
-    return {
-      id: withdraw.id,
-      asset: withdraw.asset,
-      network: withdraw.network,
-      amount: withdraw.amount,
-      fee: withdraw.fee,
-      address: withdraw.address,
-      status: withdraw.status,
-      time: formatDateTime(withdraw.created_at),
-      txHash: withdraw.tx_hash || undefined,
-    }
+  // 格式化日期时间（已不再需要，因为数据已格式化）
+  const formatDateTime = (dateStr: string) => {
+    return new Date(dateStr).toLocaleString('zh-CN')
   }
 
   const getAssetIcon = (symbol: string) => {

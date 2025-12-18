@@ -51,7 +51,8 @@ export function Footer() {
 				borderTopLeftRadius: '24px',
 				borderTopRightRadius: '24px',
 				maxWidth: '1536px',
-				margin: '0 auto'
+				margin: '0 auto',
+				flexShrink: 0
 			}}
 		>
 			<div className="bg-white/20 absolute top-0 right-1/2 left-1/2 h-px w-1/3 -translate-x-1/2 -translate-y-1/2 rounded-full blur" />

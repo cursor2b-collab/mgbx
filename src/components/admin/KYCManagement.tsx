@@ -169,7 +169,7 @@ export function KYCManagement() {
 
       {/* 统计卡片 */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
+        <div className="bg-white/5 backdrop-blur-lg border border-white/10 rounded-xl p-4 shadow-lg shadow-black/20">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-gray-400 text-sm">待审核</p>
@@ -180,7 +180,7 @@ export function KYCManagement() {
             </div>
           </div>
         </div>
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
+        <div className="bg-white/5 backdrop-blur-lg border border-white/10 rounded-xl p-4 shadow-lg shadow-black/20">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-gray-400 text-sm">已通过</p>
@@ -191,7 +191,7 @@ export function KYCManagement() {
             </div>
           </div>
         </div>
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
+        <div className="bg-white/5 backdrop-blur-lg border border-white/10 rounded-xl p-4 shadow-lg shadow-black/20">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-gray-400 text-sm">已拒绝</p>
@@ -202,7 +202,7 @@ export function KYCManagement() {
             </div>
           </div>
         </div>
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
+        <div className="bg-white/5 backdrop-blur-lg border border-white/10 rounded-xl p-4 shadow-lg shadow-black/20">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-gray-400 text-sm">审核中</p>
@@ -216,7 +216,7 @@ export function KYCManagement() {
       </div>
 
       {/* 搜索和筛选 */}
-      <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
+      <div className="bg-white/5 backdrop-blur-lg border border-white/10 rounded-xl p-6 shadow-lg shadow-black/20">
         <div className="flex flex-col md:flex-row gap-4">
           {/* 搜索框 */}
           <div className="flex-1 relative">
@@ -287,7 +287,7 @@ export function KYCManagement() {
       </div>
 
       {/* KYC申请列表 */}
-      <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+      <div className="bg-white/5 backdrop-blur-lg border border-white/10 rounded-xl overflow-hidden shadow-lg shadow-black/20">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
@@ -304,7 +304,7 @@ export function KYCManagement() {
             </thead>
             <tbody className="divide-y divide-slate-800">
               {filteredApplications.map((app) => (
-                <tr key={app.id} className="hover:bg-slate-800/50 transition-colors">
+                <tr key={app.id} className="hover:bg-white/5 transition-colors">
                   <td className="px-6 py-4 text-white font-mono text-sm">
                     {app.id}
                   </td>

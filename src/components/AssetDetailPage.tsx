@@ -2,82 +2,71 @@ import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { Button } from './ui/button'
 import { Card } from './ui/card'
-import { MobileBottomNav } from './MobileBottomNav'
 import { 
-  ArrowLeft,
-  TrendingUp,
-  TrendingDown,
-  Download,
-  Upload,
-  ArrowUpDown,
-  Eye,
-  EyeOff,
-  RefreshCcw,
-  ArrowUpRight,
-  ArrowDownLeft,
-  History as HistoryIcon
+  ChevronDown,
+  History,
+  RefreshCcw
 } from 'lucide-react'
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
+import { ChevronLeftIcon } from './ui/chevron-left-icon'
 import { useAuth } from '../hooks/useAuth'
+import { hzUserService, hzCoinsCogsService, hzRechargeService, hzWithdrawService, hzBillService, type HzCoinsCogs, type HzRecharge, type HzWithdraw, type HzBill } from '../services/hzDatabase'
 import { toast } from 'sonner'
-import { assetService, transactionService, depositService, withdrawService, type Asset, type Transaction, type Deposit, type Withdraw } from '../services/database'
-
-// 资产详情类型
-interface AssetDetail {
-  symbol: string
-  name: string
-  icon: string
-  balance: number
-  availableBalance: number
-  frozenBalance: number
-  usdValue: number
-  price: number
-  change24h: number
-  high24h: number
-  low24h: number
-  volume24h: number
-  avgBuyPrice?: number
-  profit?: number
-  profitPercent?: number
-}
 
 // 交易历史类型
 interface TransactionHistory {
   id: string
-  type: 'deposit' | 'withdraw' | 'buy' | 'sell' | 'transfer'
+  type: 'deposit' | 'withdraw' | 'transfer'
   amount: number
-  price?: number
-  total?: number
-  fee?: number
-  status: 'completed' | 'pending' | 'failed' | 'confirming' | 'cancelled'
+  status: 'completed' | 'pending' | 'failed'
   time: string
   txHash?: string
-  confirmations?: number
-  requiredConfirmations?: number
-  network?: string
-  timestamp: number
+  coinname: string
 }
 
-// 价格历史数据
-const MOCK_PRICE_HISTORY = [
-  { time: '00:00', price: 87000 },
-  { time: '04:00', price: 86500 },
-  { time: '08:00', price: 87200 },
-  { time: '12:00', price: 88000 },
-  { time: '16:00', price: 87800 },
-  { time: '20:00', price: 88500 },
-  { time: '24:00', price: 89000 }
-]
+// 理财产品类型
+interface FinancialProduct {
+  id: string
+  name: string
+  coin: string
+  type: 'flexible' | 'fixed'
+  interestRate: string
+  period?: string
+  icon: string
+}
 
 export function AssetDetailPage() {
   const navigate = useNavigate()
   const { id } = useParams<{ id: string }>()
   const { user, loading: authLoading } = useAuth()
-  const [assetDetail, setAssetDetail] = useState<AssetDetail | null>(null)
+  const [coinData, setCoinData] = useState<HzCoinsCogs | null>(null)
+  const [balance, setBalance] = useState(0)
+  const [availableBalance, setAvailableBalance] = useState(0)
+  const [frozenBalance, setFrozenBalance] = useState(0)
   const [transactions, setTransactions] = useState<TransactionHistory[]>([])
-  const [hideBalance, setHideBalance] = useState(false)
+  const [filterType, setFilterType] = useState<'all' | 'deposit' | 'withdraw' | 'transfer'>('all')
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
+
+  // 理财产品数据（模拟数据，实际应该从数据库读取）
+  const financialProducts: FinancialProduct[] = [
+    {
+      id: '1',
+      name: '灵活理财',
+      coin: 'USDT',
+      type: 'flexible',
+      interestRate: '3.00-3.01%',
+      icon: 'https://assets.coingecko.com/coins/images/325/small/Tether.png'
+    },
+    {
+      id: '2',
+      name: '双币理财',
+      coin: 'BTC-USDT',
+      type: 'fixed',
+      interestRate: '2.20-3.70%',
+      period: '7天',
+      icon: 'https://assets.coingecko.com/coins/images/1/small/bitcoin.png'
+    }
+  ]
 
   useEffect(() => {
     const loadData = async () => {
@@ -93,31 +82,91 @@ export function AssetDetailPage() {
       setNotFound(false)
 
       try {
-        const uppercaseSymbol = id.toUpperCase()
-        const asset = await assetService.getAsset(user.id, uppercaseSymbol)
+        // 获取币种信息
+        const coins = await hzCoinsCogsService.getAllCoins()
+        const coin = coins.find(c => c.coinname?.toUpperCase() === id.toUpperCase() && c.state === 1)
 
-        if (!asset) {
+        if (!coin) {
           setNotFound(true)
-          setAssetDetail(null)
-          setTransactions([])
           return
         }
 
-        setAssetDetail(mapAssetToDetail(asset))
+        setCoinData(coin)
 
-        const [allTransactions, deposits, withdraws] = await Promise.all([
-          transactionService.getUserTransactions(user.id, 100),
-          depositService.getUserDeposits(user.id),
-          withdrawService.getUserWithdraws(user.id),
+        // 获取用户信息
+        const hzUser = await hzUserService.getOrCreateUserFromAuth(user.email || '')
+
+        // 根据币种名称获取余额
+        const coinname = coin.coinname?.toUpperCase() || ''
+        let balanceValue = 0
+        let frozenValue = 0
+
+        if (coinname === 'USDT') {
+          balanceValue = hzUser.usdtbalance || 0
+          frozenValue = hzUser.usdtbalance_dj || 0
+        } else if (coinname === 'BTC') {
+          balanceValue = hzUser.btcbalance || 0
+        } else if (coinname === 'ETH') {
+          balanceValue = hzUser.ethbalance || 0
+        }
+
+        setBalance(balanceValue)
+        setAvailableBalance(balanceValue - frozenValue)
+        setFrozenBalance(frozenValue)
+
+        // 获取交易历史
+        const [recharges, withdraws, bills] = await Promise.all([
+          hzRechargeService.getAllRecharges({ uid: hzUser.id, coinname: coinname }, 50, 0),
+          hzWithdrawService.getAllWithdraws({ uid: hzUser.id, coinname: coinname }, 50, 0),
+          hzBillService.getAllBills({ uid: hzUser.id }, 50, 0)
         ])
 
-        const history = buildTransactionHistory({
-          assetSymbol: uppercaseSymbol,
-          transactions: allTransactions,
-          deposits,
-          withdraws,
+        // 合并交易记录
+        const history: TransactionHistory[] = []
+
+        recharges.forEach((recharge) => {
+          history.push({
+            id: `recharge-${recharge.id}`,
+            type: 'deposit',
+            amount: Number(recharge.num || 0),
+            status: recharge.state === 2 ? 'completed' : recharge.state === 1 ? 'pending' : 'failed',
+            time: new Date(recharge.addtime).toLocaleString('zh-CN'),
+            txHash: recharge.txid,
+            coinname: recharge.coinname || ''
+          })
         })
 
+        withdraws.forEach((withdraw) => {
+          history.push({
+            id: `withdraw-${withdraw.id}`,
+            type: 'withdraw',
+            amount: Number(withdraw.num || 0),
+            status: withdraw.state === 1 ? 'completed' : withdraw.state === 0 ? 'pending' : 'failed',
+            time: new Date(withdraw.addtime).toLocaleString('zh-CN'),
+            txHash: withdraw.txid,
+            coinname: withdraw.coinname || ''
+          })
+        })
+
+        // 从资金记录中筛选转账记录（acttype可能需要根据实际情况调整）
+        bills
+          .filter(bill => {
+            const billCoin = bill.remarks?.toUpperCase() || ''
+            return billCoin.includes(coinname) || bill.type?.toUpperCase().includes(coinname)
+          })
+          .forEach((bill) => {
+            history.push({
+              id: `bill-${bill.id}`,
+              type: 'transfer',
+              amount: Number(bill.num || 0),
+              status: bill.state === 1 ? 'completed' : 'pending',
+              time: new Date(bill.addtime).toLocaleString('zh-CN'),
+              coinname: coinname
+            })
+          })
+
+        // 按时间排序
+        history.sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime())
         setTransactions(history)
       } catch (error: any) {
         console.error('加载资产详情失败:', error)
@@ -130,152 +179,29 @@ export function AssetDetailPage() {
     loadData()
   }, [authLoading, user, id, navigate])
 
-  const mapAssetToDetail = (asset: Asset): AssetDetail => {
-    return {
-      symbol: asset.symbol,
-      name: asset.name || asset.symbol,
-      icon: asset.icon || getAssetIcon(asset.symbol),
-      balance: asset.balance,
-      availableBalance: asset.available_balance,
-      frozenBalance: asset.frozen_balance,
-      usdValue: asset.usd_value,
-      price: asset.price,
-      change24h: asset.change_24h ?? 0,
-      high24h: asset.usd_value > 0 ? asset.price * 1.02 : asset.price,
-      low24h: asset.usd_value > 0 ? asset.price * 0.98 : asset.price,
-      volume24h: asset.usd_value,
-      avgBuyPrice: asset.avg_buy_price || undefined,
-      profit: asset.profit || undefined,
-      profitPercent: asset.profit_percent || undefined,
-    }
-  }
-
-  const getAssetIcon = (assetSymbol: string) => {
-    const ICON_MAP: Record<string, string> = {
-      BTC: 'https://assets.coingecko.com/coins/images/1/small/bitcoin.png',
-      ETH: 'https://assets.coingecko.com/coins/images/279/small/ethereum.png',
-      USDT: 'https://assets.coingecko.com/coins/images/325/small/Tether.png',
-      BNB: 'https://assets.coingecko.com/coins/images/825/small/bnb-icon2_2x.png',
-    }
-    return ICON_MAP[assetSymbol] || 'https://www.svgrepo.com/show/428655/crypto-coin.svg'
-  }
-
-  const buildTransactionHistory = ({
-    assetSymbol,
-    transactions,
-    deposits,
-    withdraws,
-  }: {
-    assetSymbol: string
-    transactions: Transaction[]
-    deposits: Deposit[]
-    withdraws: Withdraw[]
-  }): TransactionHistory[] => {
-    const history: TransactionHistory[] = []
-
-    deposits
-      .filter((deposit) => deposit.asset === assetSymbol)
-      .forEach((deposit) => {
-        history.push({
-          id: deposit.id,
-          type: 'deposit',
-          amount: deposit.amount,
-          fee: 0,
-          status: deposit.status,
-          time: formatDateTime(deposit.created_at),
-          timestamp: new Date(deposit.created_at).getTime(),
-          txHash: deposit.tx_hash || undefined,
-          confirmations: deposit.confirmations,
-          requiredConfirmations: deposit.required_confirmations,
-          network: deposit.network,
-        })
-      })
-
-    withdraws
-      .filter((withdraw) => withdraw.asset === assetSymbol)
-      .forEach((withdraw) => {
-        history.push({
-          id: withdraw.id,
-          type: 'withdraw',
-          amount: withdraw.amount,
-          fee: withdraw.fee,
-          status: withdraw.status === 'processing' ? 'pending' : withdraw.status,
-          time: formatDateTime(withdraw.created_at),
-          timestamp: new Date(withdraw.created_at).getTime(),
-          txHash: withdraw.tx_hash || undefined,
-          confirmations: withdraw.confirmations,
-          requiredConfirmations: withdraw.required_confirmations,
-          network: withdraw.network,
-        })
-      })
-
-    transactions
-      .filter((tx) => tx.asset === assetSymbol && tx.type !== 'deposit' && tx.type !== 'withdraw')
-      .forEach((tx) => {
-        history.push({
-          id: tx.id,
-          type: tx.type,
-          amount: tx.amount,
-          fee: 0,
-          status: tx.status,
-          time: formatDateTime(tx.created_at),
-          timestamp: new Date(tx.created_at).getTime(),
-          txHash: tx.tx_hash || undefined,
-        })
-      })
-
-    return history.sort((a, b) => b.timestamp - a.timestamp)
-  }
-
-  const formatDateTime = (isoString: string) => {
-    return new Date(isoString).toLocaleString('zh-CN', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-    })
-  }
+  // 过滤交易记录
+  const filteredTransactions = transactions.filter(tx => {
+    if (filterType === 'all') return true
+    return tx.type === filterType
+  })
 
   // 获取交易类型标签
   const getTypeLabel = (type: TransactionHistory['type']) => {
     const labels = {
       deposit: '充值',
       withdraw: '提现',
-      buy: '买入',
-      sell: '卖出',
       transfer: '转账'
     }
     return labels[type]
   }
 
-  // 获取交易类型颜色
-  const getTypeColor = (type: TransactionHistory['type']) => {
-    switch (type) {
-      case 'deposit':
-      case 'buy':
-        return 'text-green-400'
-      case 'withdraw':
-      case 'sell':
-        return 'text-red-400'
-      default:
-        return 'text-blue-400'
-    }
-  }
-
-  // 获取交易图标
-  const getTypeIcon = (type: TransactionHistory['type']) => {
-    switch (type) {
-      case 'deposit':
-        return <ArrowDownLeft className="w-5 h-5 text-green-400" />
-      case 'withdraw':
-        return <ArrowUpRight className="w-5 h-5 text-red-400" />
-      case 'buy':
-      case 'sell':
-        return <ArrowUpDown className="w-5 h-5 text-blue-400" />
-      default:
-        return <HistoryIcon className="w-5 h-5 text-gray-400" />
+  // 获取状态颜色
+  const getStatusColor = (status: TransactionHistory['status']) => {
+    switch (status) {
+      case 'completed': return 'text-green-400'
+      case 'pending': return 'text-yellow-400'
+      case 'failed': return 'text-red-400'
+      default: return 'text-gray-400'
     }
   }
 
@@ -290,256 +216,173 @@ export function AssetDetailPage() {
     )
   }
 
-  if (notFound || !assetDetail) {
+  if (notFound || !coinData) {
     return (
       <div className="min-h-screen bg-black flex flex-col items-center justify-center gap-6 text-center px-6">
         <div className="w-20 h-20 rounded-full bg-white/5 border border-white/10 flex items-center justify-center">
-          <ArrowUpDown className="w-10 h-10 text-white/40" />
+          <History className="w-10 h-10 text-white/40" />
         </div>
         <div className="space-y-2">
-          <h2 className="text-white text-2xl font-semibold">资产数据不存在</h2>
-          <p className="text-white/50 text-sm">请先完成充值或交易，或返回资产列表查看其他币种。</p>
+          <h2 className="text-white text-2xl font-semibold">币种不存在</h2>
+          <p className="text-white/50 text-sm">该币种未启用或不存在。</p>
         </div>
-        <div className="flex gap-3">
-          <Button onClick={() => navigate('/assets')} className="bg-[#A3F030] hover:bg-[#8FD622] text-black">
-            返回资产列表
-          </Button>
-          <Button variant="outline" className="border-white/20 text-white hover:bg-white/10" onClick={() => navigate('/deposit')}>
-            去充值
-          </Button>
-        </div>
+        <Button onClick={() => navigate('/assets')} className="bg-[#A3F030] hover:bg-[#8FD622] text-black">
+          返回资产列表
+        </Button>
       </div>
     )
   }
 
+  // 过滤匹配当前币种的理财产品
+  const matchedProducts = financialProducts.filter(p => 
+    p.coin === coinData.coinname?.toUpperCase() || 
+    p.coin.includes(coinData.coinname?.toUpperCase() || '')
+  )
+
   return (
-    <div className="min-h-screen bg-black pb-20 md:pb-8">
+    <div className="min-h-screen bg-black pb-24">
       {/* 顶部导航栏 */}
-      <div className="sticky top-0 z-40 bg-[#0A0A0A]/95 backdrop-blur-xl border-b border-white/10">
+      <div className="sticky top-0 z-40 bg-black/95 backdrop-blur-xl border-b border-white/10">
         <div className="max-w-7xl mx-auto px-4 py-4">
-          <div className="flex items-center gap-4">
+          <div className="relative flex items-center justify-center">
+            {/* 返回按钮 - 绝对定位在左边 */}
             <Button 
               variant="ghost" 
               size="sm"
-              onClick={() => navigate('/profile')}
-              className="text-white/70 hover:text-white"
+              onClick={() => navigate('/assets')}
+              className="absolute left-0 text-white/70 hover:text-white p-2"
             >
-              <ArrowLeft className="w-5 h-5" />
+              <ChevronLeftIcon size={20} />
             </Button>
-            <img src={assetDetail.icon} alt={assetDetail.symbol} className="w-8 h-8 rounded-full" />
-            <div className="flex-1">
-              <h1 className="text-white text-xl">{assetDetail.symbol}</h1>
-              <p className="text-white/50 text-sm">{assetDetail.name}</p>
+            {/* 图标和币种名称 - 居中 */}
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-full bg-[#A3F030] flex items-center justify-center flex-shrink-0">
+                {coinData.coinlogo ? (
+                  <img src={coinData.coinlogo} alt={coinData.coinname} className="w-full h-full rounded-full object-cover" />
+                ) : (
+                  <span className="text-black font-bold text-sm">{coinData.coinname?.[0]}</span>
+                )}
+              </div>
+              <h1 className="text-white text-lg font-semibold">{coinData.coinname}</h1>
             </div>
-            <Button 
-              variant="ghost" 
-              size="sm"
-              onClick={() => setHideBalance(!hideBalance)}
-              className="text-white/70 hover:text-white"
-            >
-              {hideBalance ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-            </Button>
           </div>
         </div>
       </div>
 
       <div className="max-w-7xl mx-auto px-4 py-6 space-y-6">
-        {/* 资产概览卡片 */}
-        <Card className="bg-gradient-to-br from-[#A3F030]/20 to-[#A3F030]/5 border-[#A3F030]/20 overflow-hidden">
-          <div className="p-6">
-            {/* 余额 */}
-            <div className="mb-6">
-              <div className="flex items-center gap-2 mb-2">
-                <span className="text-white/70 text-sm">总余额</span>
-                <RefreshCcw className="w-4 h-4 text-white/40" />
-              </div>
-              <div className="text-4xl font-bold text-white mb-2">
-                {hideBalance ? '****' : assetDetail.balance} {assetDetail.symbol}
-              </div>
-              {!hideBalance && (
-                <div className="flex items-center gap-3">
-                  <span className="text-white/50 text-sm">≈ ${assetDetail.usdValue.toLocaleString()}</span>
-                  {assetDetail.profitPercent && (
-                    <div className={`flex items-center gap-1 text-sm ${assetDetail.profitPercent >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                      {assetDetail.profitPercent >= 0 ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
-                      {assetDetail.profitPercent >= 0 ? '+' : ''}{assetDetail.profitPercent.toFixed(2)}%
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {/* 余额明细 */}
-            <div className="grid grid-cols-2 gap-4 mb-6 pb-6 border-b border-white/10">
-              <div>
-                <div className="text-white/50 text-sm mb-1">可用</div>
-                <div className="text-white font-semibold">
-                  {hideBalance ? '****' : assetDetail.availableBalance}
-                </div>
-              </div>
-              <div>
-                <div className="text-white/50 text-sm mb-1">冻结</div>
-                <div className="text-white font-semibold">
-                  {hideBalance ? '****' : assetDetail.frozenBalance}
-                </div>
-              </div>
-            </div>
-
-            {/* 快捷操作 */}
-            <div className="grid grid-cols-3 gap-3">
-              <Button 
-                onClick={() => navigate('/deposit')}
-                className="bg-[#A3F030] hover:bg-[#8FD622] text-black"
-              >
-                <Download className="w-4 h-4 mr-1" />
-                充值
-              </Button>
-              <Button 
-                onClick={() => navigate('/withdraw')}
-                variant="outline"
-                className="border-[#A3F030]/30 text-[#A3F030] hover:bg-[#A3F030]/10"
-              >
-                <Upload className="w-4 h-4 mr-1" />
-                提现
-              </Button>
-              <Button 
-                onClick={() => navigate(`/trading?symbol=${assetDetail.symbol}USDT`)}
-                variant="outline"
-                className="border-white/20 text-white hover:bg-white/10"
-              >
-                <ArrowUpDown className="w-4 h-4 mr-1" />
-                交易
-              </Button>
-            </div>
-          </div>
-        </Card>
-
-        {/* 价格信息卡片 */}
+        {/* 资产余额卡片 */}
         <Card className="bg-white/5 border-white/10">
           <div className="p-6">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-white font-semibold">价格信息</h3>
-              <div className={`flex items-center gap-1 ${assetDetail.change24h >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                {assetDetail.change24h >= 0 ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
-                {assetDetail.change24h >= 0 ? '+' : ''}{assetDetail.change24h.toFixed(2)}%
-              </div>
+              <h2 className="text-white text-lg font-semibold">资产余额</h2>
+              <Button 
+                variant="ghost" 
+                size="sm"
+                className="text-white/70 hover:text-white p-2"
+              >
+                <RefreshCcw className="w-4 h-4" />
+              </Button>
             </div>
 
-            {/* 价格图表 */}
-            <div className="h-48 mb-4">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={MOCK_PRICE_HISTORY}>
-                  <XAxis 
-                    dataKey="time" 
-                    stroke="#ffffff40"
-                    style={{ fontSize: '12px' }}
-                  />
-                  <YAxis 
-                    stroke="#ffffff40"
-                    style={{ fontSize: '12px' }}
-                    domain={['dataMin - 1000', 'dataMax + 1000']}
-                  />
-                  <Tooltip 
-                    contentStyle={{ 
-                      backgroundColor: '#1A1A1A', 
-                      border: '1px solid rgba(255,255,255,0.1)',
-                      borderRadius: '8px'
-                    }}
-                    labelStyle={{ color: '#fff' }}
-                  />
-                  <Line 
-                    type="monotone" 
-                    dataKey="price" 
-                    stroke="#A3F030" 
-                    strokeWidth={2}
-                    dot={false}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-
-            {/* 价格统计 */}
-            <div className="grid grid-cols-3 gap-4">
-              <div>
-                <div className="text-white/50 text-xs mb-1">24H最高</div>
-                <div className="text-white font-semibold text-sm">${assetDetail.high24h.toLocaleString()}</div>
+            {/* 总余额 */}
+            <div className="mb-6">
+              <div className="text-3xl font-bold text-white mb-2">
+                {balance.toFixed(2)}
               </div>
-              <div>
-                <div className="text-white/50 text-xs mb-1">24H最低</div>
-                <div className="text-white font-semibold text-sm">${assetDetail.low24h.toLocaleString()}</div>
-              </div>
-              <div>
-                <div className="text-white/50 text-xs mb-1">24H成交量</div>
-                <div className="text-white font-semibold text-sm">${(assetDetail.volume24h / 1000000).toFixed(0)}M</div>
+              <div className="grid grid-cols-2 gap-4 mt-4">
+                <div>
+                  <div className="text-white/50 text-sm mb-1">可用资产</div>
+                  <div className="text-white font-semibold">{availableBalance.toFixed(2)}</div>
+                </div>
+                <div>
+                  <div className="text-white/50 text-sm mb-1">冻结资产</div>
+                  <div className="text-white font-semibold">{frozenBalance.toFixed(2)}</div>
+                </div>
               </div>
             </div>
           </div>
         </Card>
 
-        {/* 持仓信息 */}
-        {assetDetail.avgBuyPrice && (
-          <Card className="bg-white/5 border-white/10">
-            <div className="p-6">
-              <h3 className="text-white font-semibold mb-4">持仓信息</h3>
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-white/70">持仓数量</span>
-                  <span className="text-white font-semibold">{assetDetail.balance} {assetDetail.symbol}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-white/70">平均成本</span>
-                  <span className="text-white font-semibold">${assetDetail.avgBuyPrice.toLocaleString()}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-white/70">当前价格</span>
-                  <span className="text-white font-semibold">${assetDetail.price.toLocaleString()}</span>
-                </div>
-                <div className="flex items-center justify-between pt-3 border-t border-white/10">
-                  <span className="text-white/70">持仓盈亏</span>
-                  <div className="text-right">
-                    <div className={`font-semibold ${assetDetail.profit && assetDetail.profit >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                      {assetDetail.profit && assetDetail.profit >= 0 ? '+' : ''}${assetDetail.profit?.toLocaleString()}
+        {/* 理财部分 */}
+        {matchedProducts.length > 0 && (
+          <div>
+            <h2 className="text-white text-lg font-semibold mb-4">理财</h2>
+            <div className="grid grid-cols-2 gap-4">
+              {matchedProducts.map((product) => (
+                <Card key={product.id} className="bg-white/5 border-white/10 hover:bg-white/10 transition-all cursor-pointer">
+                  <div className="p-4">
+                    <div className="flex items-center gap-2 mb-3">
+                      <div className="w-8 h-8 rounded-full bg-[#A3F030] flex items-center justify-center flex-shrink-0">
+                        {product.icon ? (
+                          <img src={product.icon} alt={product.coin} className="w-full h-full rounded-full object-cover" />
+                        ) : (
+                          <span className="text-black font-bold text-xs">{product.coin[0]}</span>
+                        )}
+                      </div>
+                      <span className="text-white font-medium text-sm">{product.coin}</span>
                     </div>
-                    <div className={`text-sm ${assetDetail.profitPercent && assetDetail.profitPercent >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                      {assetDetail.profitPercent && assetDetail.profitPercent >= 0 ? '+' : ''}{assetDetail.profitPercent?.toFixed(2)}%
-                    </div>
+                    <div className="text-white/70 text-sm mb-2">{product.name}</div>
+                    <div className="text-[#A3F030] text-lg font-bold mb-3">{product.interestRate}</div>
+                    {product.period && (
+                      <div className="inline-block px-2 py-1 bg-white/10 rounded-full text-white/70 text-xs">
+                        {product.period}
+                      </div>
+                    )}
+                    {!product.period && (
+                      <div className="inline-block px-2 py-1 bg-white/10 rounded-full text-white/70 text-xs">
+                        活期
+                      </div>
+                    )}
                   </div>
-                </div>
-              </div>
+                </Card>
+              ))}
             </div>
-          </Card>
+          </div>
         )}
 
-        {/* 交易历史 */}
-        <Card className="bg-white/5 border-white/10">
-          <div className="p-6">
-            <h3 className="text-white font-semibold mb-4">交易历史</h3>
-            
-            {transactions.length === 0 ? (
-              <div className="py-12 text-center">
-                <HistoryIcon className="w-16 h-16 text-white/20 mx-auto mb-4" />
-                <p className="text-white/50">暂无交易记录</p>
+        {/* 历史记录 */}
+        <div>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-white text-lg font-semibold">历史记录</h2>
+            <div className="relative">
+              <select
+                value={filterType}
+                onChange={(e) => setFilterType(e.target.value as any)}
+                className="appearance-none bg-white/5 border border-white/10 rounded-lg px-4 py-2 pr-8 text-white text-sm focus:outline-none focus:border-[#A3F030]/50"
+              >
+                <option value="all" className="bg-slate-900">全部</option>
+                <option value="deposit" className="bg-slate-900">充值</option>
+                <option value="withdraw" className="bg-slate-900">提现</option>
+                <option value="transfer" className="bg-slate-900">转账</option>
+              </select>
+              <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40 pointer-events-none" />
+            </div>
+          </div>
+
+          {filteredTransactions.length === 0 ? (
+            <Card className="bg-white/5 border-white/10">
+              <div className="p-8 text-center">
+                <History className="w-12 h-12 text-white/20 mx-auto mb-3" />
+                <p className="text-white/50 text-sm">暂无交易记录</p>
               </div>
-            ) : (
-              <div className="space-y-3">
-                {transactions.map((tx) => (
-                  <div
-                    key={tx.id}
-                    className="p-4 bg-white/5 rounded-lg hover:bg-white/10 transition-all cursor-pointer"
-                    onClick={() => {
-                      if (tx.type === 'deposit') navigate(`/deposit/${tx.id}`)
-                      else if (tx.type === 'withdraw') navigate(`/withdraw/${tx.id}`)
-                      else navigate(`/trade/${tx.id}`)
-                    }}
-                  >
-                    <div className="flex items-center justify-between mb-2">
+            </Card>
+          ) : (
+            <div className="space-y-2">
+              {filteredTransactions.map((tx) => (
+                <Card key={tx.id} className="bg-white/5 border-white/10 hover:bg-white/10 transition-all">
+                  <div className="p-4">
+                    <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
                           tx.type === 'deposit' ? 'bg-green-500/20' :
                           tx.type === 'withdraw' ? 'bg-red-500/20' :
                           'bg-blue-500/20'
                         }`}>
-                          {getTypeIcon(tx.type)}
+                          <History className={`w-5 h-5 ${
+                            tx.type === 'deposit' ? 'text-green-400' :
+                            tx.type === 'withdraw' ? 'text-red-400' :
+                            'text-blue-400'
+                          }`} />
                         </div>
                         <div>
                           <div className="text-white font-semibold">{getTypeLabel(tx.type)}</div>
@@ -547,43 +390,49 @@ export function AssetDetailPage() {
                         </div>
                       </div>
                       <div className="text-right">
-                        <div className={`font-semibold ${getTypeColor(tx.type)}`}>
-                          {tx.type === 'deposit' || tx.type === 'buy' ? '+' : '-'}{tx.amount} {assetDetail.symbol}
+                        <div className={`font-semibold ${
+                          tx.type === 'deposit' ? 'text-green-400' : 'text-red-400'
+                        }`}>
+                          {tx.type === 'deposit' ? '+' : '-'}{tx.amount.toFixed(8)} {tx.coinname}
                         </div>
-                        {tx.price && (
-                          <div className="text-white/50 text-sm">@ ${tx.price.toLocaleString()}</div>
-                        )}
+                        <div className={`text-sm ${getStatusColor(tx.status)}`}>
+                          {tx.status === 'completed' ? '已完成' : tx.status === 'pending' ? '处理中' : '失败'}
+                        </div>
                       </div>
                     </div>
-                    {tx.total && (
-                      <div className="flex items-center justify-between text-xs text-white/40 pt-2 border-t border-white/10">
-                        <span>总额: ${tx.total.toLocaleString()}</span>
-                        <span>手续费: ${tx.fee}</span>
-                      </div>
-                    )}
-                    {tx.type === 'deposit' && tx.status === 'confirming' && tx.requiredConfirmations && tx.requiredConfirmations > 0 && (
-                      <div className="mt-3 pt-3 border-t border-white/10">
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="text-white/50">确认进度</span>
-                          <span className="text-[#A3F030]">{tx.confirmations}/{tx.requiredConfirmations}</span>
-                        </div>
-                        <div className="mt-2 h-1.5 bg-white/10 rounded-full overflow-hidden">
-                          <div 
-                            className="h-full bg-[#A3F030] transition-all"
-                            style={{ width: `${Math.min(100, (tx.confirmations / tx.requiredConfirmations) * 100)}%` }}
-                          />
-                        </div>
+                    {tx.txHash && (
+                      <div className="mt-2 text-xs text-white/40 font-mono truncate">
+                        {tx.txHash}
                       </div>
                     )}
                   </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </Card>
+                </Card>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
-      <MobileBottomNav />
+      {/* 底部操作按钮 */}
+      <div className="fixed bottom-0 left-0 right-0 bg-black/95 backdrop-blur-xl border-t border-white/10 z-30">
+        <div className="max-w-7xl mx-auto px-4 py-4">
+          <div className="grid grid-cols-2 gap-4">
+            <Button 
+              onClick={() => navigate('/deposit')}
+              className="bg-[#A3F030] hover:bg-[#8FD622] text-black h-12 text-base font-semibold rounded-xl"
+            >
+              买币
+            </Button>
+            <Button 
+              onClick={() => navigate('/assets')}
+              variant="outline"
+              className="border-white/20 text-white hover:bg-white/10 h-12 text-base font-semibold rounded-xl"
+            >
+              划转
+            </Button>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }

@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Eye, EyeOff, Github } from 'lucide-react';
+import { Eye, EyeOff } from 'lucide-react';
 import { auth } from '../utils/supabase/client';
 import { toast } from 'sonner';
 import { useLanguage } from '../contexts/LanguageContext';
 import { LanguageSelector } from './LanguageSelector';
 import { Navbar } from './Navbar';
 import { Footer } from './ui/footer-section';
+import { WalletConnectButton } from './WalletConnectButton';
 
 // Google Icon Component
 const GoogleIcon = () => (
@@ -53,10 +54,17 @@ export function AuthPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [windowHeight, setWindowHeight] = useState(typeof window !== 'undefined' ? window.innerHeight : 800);
 
   useEffect(() => {
     setIsMobile(window.innerWidth < 768);
-    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    setWindowHeight(window.innerHeight);
+    
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768);
+      setWindowHeight(window.innerHeight);
+    };
+    
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
@@ -130,30 +138,36 @@ export function AuthPage() {
 
   return (
     <div style={{
-      minHeight: '100dvh',
-      width: '100dvw',
+      width: '100%',
+      height: '100vh',
       display: 'flex',
       flexDirection: 'column',
       fontFamily: 'system-ui, -apple-system, sans-serif',
-      overflow: 'auto'
+      overflowX: 'hidden',
+      overflowY: 'auto',
+      position: 'relative'
     }}>
       <Navbar />
       <div style={{
-        flex: 1,
+        flex: '1 1 auto',
         display: 'flex',
         flexDirection: isMobile ? 'column' : 'row',
-        overflow: isMobile ? 'auto' : 'hidden',
-        minHeight: 0,
+        overflow: 'visible',
         paddingTop: '56px',
-        scrollMarginTop: '56px'
+        scrollMarginTop: '56px',
+        position: 'relative',
+        width: '100%',
+        minHeight: '600px',
+        flexShrink: 0
       }}>
 
       {/* Left Section - Form for Sign In, Image for Sign Up */}
       <div style={{ 
         flex: 1, 
         position: 'relative', 
-        overflow: 'hidden',
-        display: isMobile && isSignUp ? 'none' : 'block'
+        overflow: 'auto',
+        display: isMobile && isSignUp ? 'none' : 'block',
+        minHeight: 0
       }}>
         <AnimatePresence mode="sync">
           {isSignUp ? (
@@ -208,27 +222,49 @@ export function AuthPage() {
                 单人最高可得 <span style={{ color: '#C5FF30' }}>6888 USDT</span>
               </p>
             </div>
-            <video
-              autoPlay
-              loop
-              muted
-              playsInline
-              preload="auto"
-              style={{
+            <div style={{
+              position: 'absolute',
+              top: '60%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              width: '60%',
+              height: '60%',
+              borderRadius: '24px',
+            }}>
+              <video
+                autoPlay
+                loop
+                muted
+                playsInline
+                preload="auto"
+                style={{
+                  position: 'relative',
+                  width: '100%',
+                  height: '100%',
+                  borderRadius: '24px',
+                  objectFit: 'contain',
+                  imageRendering: 'crisp-edges',
+                  WebkitImageRendering: 'crisp-edges',
+                  zIndex: 1
+                }}
+              >
+                <source src={signUpVideo} type="video/mp4" />
+              </video>
+              {/* 底部荧光效果 */}
+              <div style={{
                 position: 'absolute',
-                top: '60%',
+                bottom: '-8px',
                 left: '50%',
-                transform: 'translate(-50%, -50%)',
-                borderRadius: '24px',
-                width: '60%',
-                height: '60%',
-                objectFit: 'contain',
-                imageRendering: 'crisp-edges',
-                WebkitImageRendering: 'crisp-edges'
-              }}
-            >
-              <source src={signUpVideo} type="video/mp4" />
-            </video>
+                transform: 'translateX(-50%)',
+                width: '120%',
+                height: '20px',
+                background: `linear-gradient(to top, rgba(0, 229, 255, 0.6), rgba(0, 229, 255, 0.2), transparent)`,
+                borderRadius: '50%',
+                filter: 'blur(12px)',
+                zIndex: 0,
+                pointerEvents: 'none'
+              }} />
+            </div>
           </motion.div>
           ) : (
             <motion.div
@@ -507,35 +543,8 @@ export function AuthPage() {
                     <GoogleIcon />
                     <span>Google</span>
                   </button>
-                  <button
-                    onClick={handleGithubSignIn}
-                    disabled={isLoading}
-                    style={{
-                      flex: 1,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '12px',
-                      border: '1px solid rgba(255, 255, 255, 0.1)',
-                      borderRadius: '16px',
-                      padding: '16px',
-                      backgroundColor: 'transparent',
-                      color: '#fff',
-                      fontSize: '14px',
-                      cursor: isLoading ? 'not-allowed' : 'pointer',
-                      opacity: isLoading ? 0.5 : 1,
-                      transition: 'background-color 0.2s'
-                    }}
-                    onMouseEnter={(e) => {
-                      if (!isLoading) e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.05)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = 'transparent';
-                    }}
-                  >
-                    <Github size={20} />
-                    <span>GitHub</span>
-                  </button>
+                  {/* Web3 钱包连接按钮 - 替换原来的 GitHub 按钮 */}
+                  <WalletConnectButton disabled={isLoading} isLoading={isLoading} />
                 </div>
 
                 <p style={{
@@ -593,9 +602,10 @@ export function AuthPage() {
       <div style={{ 
         flex: 1, 
         position: 'relative', 
-        overflow: 'hidden',
+        overflow: 'auto',
         width: isMobile ? '100%' : 'auto',
-        display: isMobile && !isSignUp ? 'none' : 'block'
+        display: isMobile && !isSignUp ? 'none' : 'block',
+        minHeight: 0
       }}>
         <AnimatePresence mode="sync">
           {isSignUp ? (
@@ -836,6 +846,39 @@ export function AuthPage() {
                   </button>
                 </form>
 
+                <div style={{
+                  position: 'relative',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  margin: '8px 0'
+                }}>
+                  <div style={{
+                    width: '100%',
+                    height: '1px',
+                    backgroundColor: 'rgba(255, 255, 255, 0.1)'
+                  }} />
+                  <span style={{
+                    position: 'absolute',
+                    padding: '0 16px',
+                    fontSize: '14px',
+                    color: 'rgba(255, 255, 255, 0.6)',
+                    backgroundColor: '#000000'
+                  }}>
+                    {t('auth.orContinueWith')}
+                  </span>
+                </div>
+
+                {/* Web3 钱包连接按钮 */}
+                <div style={{
+                  width: '100%',
+                  display: 'flex',
+                  justifyContent: 'center',
+                  marginBottom: '16px'
+                }}>
+                  <WalletConnectButton disabled={isLoading} isLoading={isLoading} fullWidth />
+                </div>
+
                 <p style={{
                   textAlign: 'center',
                   fontSize: '14px',
@@ -935,33 +978,62 @@ export function AuthPage() {
                 单人最高可得 <span style={{ color: '#C5FF30' }}>6888 USDT</span>
               </p>
             </div>
-            <video
-              autoPlay
-              loop
-              muted
-              playsInline
-              preload="auto"
-              style={{
+            <div style={{
+              position: 'absolute',
+              top: '60%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              width: '60%',
+              height: '60%',
+              borderRadius: '24px',
+            }}>
+              <video
+                autoPlay
+                loop
+                muted
+                playsInline
+                preload="auto"
+                style={{
+                  position: 'relative',
+                  width: '100%',
+                  height: '100%',
+                  borderRadius: '24px',
+                  objectFit: 'contain',
+                  imageRendering: 'crisp-edges',
+                  WebkitImageRendering: 'crisp-edges',
+                  zIndex: 1
+                }}
+              >
+                <source src={signInVideo} type="video/mp4" />
+              </video>
+              {/* 底部荧光效果 */}
+              <div style={{
                 position: 'absolute',
-                top: '60%',
+                bottom: '-8px',
                 left: '50%',
-                transform: 'translate(-50%, -50%)',
-                borderRadius: '24px',
-                width: '60%',
-                height: '60%',
-                objectFit: 'contain',
-                imageRendering: 'crisp-edges',
-                WebkitImageRendering: 'crisp-edges'
-              }}
-            >
-              <source src={signInVideo} type="video/mp4" />
-            </video>
+                transform: 'translateX(-50%)',
+                width: '120%',
+                height: '20px',
+                background: `linear-gradient(to top, rgba(0, 229, 255, 0.6), rgba(0, 229, 255, 0.2), transparent)`,
+                borderRadius: '50%',
+                filter: 'blur(12px)',
+                zIndex: 0,
+                pointerEvents: 'none'
+              }} />
+            </div>
             </motion.div>
           )}
         </AnimatePresence>
       </div>
       </div>
-      <Footer />
+      {windowHeight >= 800 && (
+        <div style={{
+          flexShrink: 1,
+          minHeight: 0
+        }}>
+          <Footer />
+        </div>
+      )}
       <style>{`
         .auth-input-wrapper:focus-within {
           border-color: #C5FF30 !important;

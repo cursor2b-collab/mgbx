@@ -27,10 +27,22 @@ import { LendingPage } from './components/LendingPage'
 import { PlaceholderPage } from './components/PlaceholderPage'
 import { AdminLayout } from './components/admin/AdminLayout'
 import { AdminDashboard } from './components/admin/AdminDashboard'
+import { AdminLogin } from './components/admin/AdminLogin'
+import { AdminProtectedRoute } from './components/admin/AdminProtectedRoute'
 import { UserManagement } from './components/admin/UserManagement'
 import { TradeManagement } from './components/admin/TradeManagement'
 import { KYCManagement } from './components/admin/KYCManagement'
 import { OrderManagement } from './components/admin/OrderManagement'
+import { FundManagement } from './components/admin/FundManagement'
+import { GoodsManagement } from './components/admin/GoodsManagement'
+import { CoinsManagement } from './components/admin/CoinsManagement'
+import { ShopManagement } from './components/admin/ShopManagement'
+import { ContentManagement } from './components/admin/ContentManagement'
+import { SettingsManagement } from './components/admin/SettingsManagement'
+import { ManageManagement } from './components/admin/ManageManagement'
+import { RiskManagement } from './components/admin/RiskManagement'
+import { ConfigManagement } from './components/admin/ConfigManagement'
+import { FormsManagement } from './components/admin/FormsManagement'
 import { ScrollToTop } from './components/ScrollToTop'
 import { DevHelper } from './components/DevHelper'
 import { LanguageProvider } from './contexts/LanguageContext'
@@ -187,18 +199,85 @@ export default function App() {
           {/* 多语言示例页 */}
           <Route path="/language-demo" element={<LanguageExample />} />
           
+          {/* 管理后台登录页 */}
+          <Route path="/admin/login" element={<AdminLogin />} />
+          
           {/* 管理后台路由 */}
-          <Route path="/admin" element={<AdminLayout />}>
+          <Route 
+            path="/admin" 
+            element={
+              <AdminProtectedRoute>
+                <AdminLayout />
+              </AdminProtectedRoute>
+            }
+          >
             <Route index element={<AdminDashboard />} />
+            
+            {/* 基础设置 */}
+            <Route path="coins" element={<CoinsManagement />} />
+            
+            {/* 用户中心 */}
             <Route path="users" element={<UserManagement />} />
-            <Route path="trades" element={<TradeManagement />} />
-            <Route path="kyc" element={<KYCManagement />} />
-            <Route path="orders" element={<OrderManagement />} />
-            <Route path="analytics" element={<div className="text-white">数据统计 - 开发中</div>} />
-            <Route path="content" element={<div className="text-white">内容管理 - 开发中</div>} />
-            <Route path="messages" element={<div className="text-white">客服消息 - 开发中</div>} />
-            <Route path="permissions" element={<div className="text-white">权限管理 - 开发中</div>} />
-            <Route path="settings" element={<div className="text-white">系统设置 - 开发中</div>} />
+            <Route path="users/auth" element={<div className="text-white p-6">认证数据 - 开发中</div>} />
+            <Route path="users/account" element={<div className="text-white p-6">账户管理 - 开发中</div>} />
+            <Route path="users/bill" element={<div className="text-white p-6">资金记录 - 开发中</div>} />
+            
+            {/* 充值提现 */}
+            <Route path="fund/recharge" element={<FundManagement />} />
+            <Route path="fund/withdrawal" element={<FundManagement />} />
+            <Route path="fund/withdrawalbank" element={<FundManagement />} />
+            
+            {/* 订单管理 */}
+            <Route path="orders/contract" element={<OrderManagement />} />
+            <Route path="orders/option" element={<div className="text-white p-6">期权订单 - 开发中</div>} />
+            <Route path="orders/borrow" element={<div className="text-white p-6">借贷订单 - 开发中</div>} />
+            <Route path="orders/still" element={<div className="text-white p-6">质押订单 - 开发中</div>} />
+            <Route path="orders/arrange" element={<div className="text-white p-6">委托订单 - 开发中</div>} />
+            
+            {/* 产品管理 */}
+            <Route path="goods/forward" element={<GoodsManagement />} />
+            <Route path="goods/option" element={<GoodsManagement />} />
+            <Route path="goods/borrow" element={<GoodsManagement />} />
+            <Route path="goods/pledge" element={<GoodsManagement />} />
+            <Route path="goods/encrypt" element={<GoodsManagement />} />
+            <Route path="goods/foreign" element={<GoodsManagement />} />
+            <Route path="goods/shares" element={<GoodsManagement />} />
+            <Route path="goods/kline" element={<GoodsManagement />} />
+            
+            {/* 交易管理 */}
+            <Route path="trades/entrust" element={<TradeManagement />} />
+            <Route path="trades/index" element={<TradeManagement />} />
+            
+            {/* 商城管理 */}
+            <Route path="shop/index" element={<ShopManagement />} />
+            <Route path="shop/orderlist" element={<ShopManagement />} />
+            
+            {/* 风控管理 */}
+            <Route path="risk" element={<RiskManagement />} />
+            
+            {/* 文章公告 */}
+            <Route path="article" element={<ContentManagement />} />
+            <Route path="notice" element={<ContentManagement />} />
+            <Route path="answers" element={<ContentManagement />} />
+            
+            {/* 系统管理 */}
+            <Route path="settings" element={<SettingsManagement />} />
+            <Route path="settings/level" element={<SettingsManagement />} />
+            <Route path="settings/trade" element={<SettingsManagement />} />
+            <Route path="settings/protocol" element={<SettingsManagement />} />
+            <Route path="settings/kefucode" element={<SettingsManagement />} />
+            
+            {/* 管理员管理 */}
+            <Route path="manage" element={<ManageManagement />} />
+            <Route path="manage/rules" element={<ManageManagement />} />
+            <Route path="manage/logs" element={<ManageManagement />} />
+            
+            {/* 配置管理 */}
+            <Route path="config/params" element={<ConfigManagement />} />
+            <Route path="config/logs" element={<ConfigManagement />} />
+            
+            {/* 表单管理 */}
+            <Route path="forms" element={<FormsManagement />} />
           </Route>
           
           {/* 404 重定向 */}

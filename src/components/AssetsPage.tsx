@@ -8,6 +8,7 @@ import { MobileBottomNav } from './MobileBottomNav'
 import { Navbar } from './Navbar'
 import { useAuth } from '../hooks/useAuth'
 import { projectId } from '../utils/supabase/info'
+import { hzUserService, hzCoinsCogsService, type HzCoinsCogs } from '../services/hzDatabase'
 import { 
   Wallet,
   TrendingUp,
@@ -259,38 +260,82 @@ export function AssetsPage() {
   const totalProfit = assets.reduce((sum, asset) => sum + (asset.profit || 0), 0)
   const totalProfitPercent = totalAssets > 0 ? (totalProfit / (totalAssets - totalProfit)) * 100 : 0
 
-  // 从API获取资产数据
+  // 从数据库获取资产数据
   const fetchAssets = async () => {
     try {
-      if (!session?.access_token) {
-        console.error('No access token available')
+      if (!user) {
         toast.error('请先登录')
         navigate('/login')
         return
       }
 
-      const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-2d551b3c/assets`,
-        {
-          headers: {
-            'Authorization': `Bearer ${session.access_token}`,
-            'Content-Type': 'application/json',
-          },
-        }
-      )
-
-      if (!response.ok) {
-        if (response.status === 401) {
-          toast.error('登录已过期，请重新登录')
-          navigate('/login')
-          return
-        }
-        throw new Error('Failed to fetch assets')
+      // 获取或创建 hz_users 记录
+      const hzUser = await hzUserService.getOrCreateUserFromAuth(user.email || '')
+      
+      // 从数据库获取所有启用的币种（state=1）
+      const coins = await hzCoinsCogsService.getAllCoins()
+      const enabledCoins = coins.filter(coin => coin.state === 1)
+      
+      // 币种价格映射（简化处理，使用固定价格，实际应该从API获取）
+      const priceMap: Record<string, number> = {
+        USDT: 1,
+        BTC: 87000,
+        ETH: 3300,
+        BNB: 620,
+        SOL: 210,
+        DOGE: 0.08,
+        USDC: 1,
+        TRX: 0.11,
+        TON: 5.2,
       }
 
-      const data = await response.json()
-      console.log('获取到的资产数据:', data)
-      setAssets(data.assets || [])
+      // 根据币种名称获取余额的映射函数
+      const getBalance = (coinname: string): number => {
+        const upperName = coinname.toUpperCase()
+        if (upperName === 'USDT') return hzUser.usdtbalance || 0
+        if (upperName === 'BTC') return hzUser.btcbalance || 0
+        if (upperName === 'ETH') return hzUser.ethbalance || 0
+        // 其他币种暂时返回0（因为数据库中没有对应的余额字段）
+        return 0
+      }
+
+      // 获取冻结余额（目前只有USDT有冻结余额字段）
+      const getFrozenBalance = (coinname: string): number => {
+        const upperName = coinname.toUpperCase()
+        if (upperName === 'USDT') return hzUser.usdtbalance_dj || 0
+        return 0
+      }
+
+      // 将币种转换为资产格式
+      const formattedAssets: Asset[] = enabledCoins.map((coin, index) => {
+        const balance = getBalance(coin.coinname)
+        const frozenBalance = getFrozenBalance(coin.coinname)
+        const availableBalance = balance - frozenBalance
+        const price = priceMap[coin.coinname.toUpperCase()] || 1
+        const usdValue = balance * price
+
+        return {
+          id: coin.id.toString(),
+          symbol: coin.coinname || '',
+          name: coin.coinfullname || coin.coinname || '',
+          icon: coin.coinlogo || `https://assets.coingecko.com/coins/images/325/small/Tether.png`,
+          balance: balance,
+          availableBalance: availableBalance,
+          frozenBalance: frozenBalance,
+          usdValue: usdValue,
+          price: price,
+          change24h: 0, // 可以从价格API获取
+        }
+      })
+
+      // 按余额排序，有余额的在前，余额为0的在后
+      formattedAssets.sort((a, b) => {
+        if (b.balance > 0 && a.balance === 0) return 1
+        if (a.balance > 0 && b.balance === 0) return -1
+        return b.usdValue - a.usdValue
+      })
+
+      setAssets(formattedAssets)
     } catch (error: any) {
       console.error('获取资产失败:', error)
       toast.error(error.message || '获取资产失败')
@@ -537,16 +582,8 @@ export function AssetsPage() {
                   <div className="mx-auto w-14 h-14 rounded-full bg-white/10 flex items-center justify-center">
                     <Wallet className="w-7 h-7 text-white/60" />
                   </div>
-                  <h3 className="text-white text-lg font-semibold">暂无资产</h3>
-                  <p className="text-white/50 text-sm">完成充值或交易后，这里会展示您的资产明细。</p>
-                  <div className="flex gap-3 justify-center">
-                    <Button onClick={() => navigate('/deposit')} className="bg-[#A3F030] hover:bg-[#8FD622] text-black h-10 px-6">
-                      <Download className="w-4 h-4 mr-2" />充值
-                    </Button>
-                    <Button onClick={() => navigate('/trading')} variant="outline" className="border-white/20 text-white hover:bg-white/10 h-10 px-6">
-                      去交易
-                    </Button>
-                  </div>
+                  <h3 className="text-white text-lg font-semibold">暂无币种</h3>
+                  <p className="text-white/50 text-sm">后台尚未添加任何币种。</p>
                 </div>
               </Card>
             ) : (
@@ -560,7 +597,15 @@ export function AssetsPage() {
                     <div className="p-4">
                       <div className="flex items-center gap-4">
                         {/* 图标和名称 */}
-                        <img src={asset.icon} alt={asset.symbol} className="w-10 h-10 rounded-full flex-shrink-0" />
+                        <img 
+                          src={asset.icon} 
+                          alt={asset.symbol} 
+                          className="w-10 h-10 rounded-full flex-shrink-0 object-cover"
+                          onError={(e) => {
+                            // 如果图片加载失败，使用默认图标
+                            (e.target as HTMLImageElement).src = 'https://assets.coingecko.com/coins/images/325/small/Tether.png';
+                          }}
+                        />
                         
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1">

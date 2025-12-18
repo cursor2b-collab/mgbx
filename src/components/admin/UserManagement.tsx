@@ -1,85 +1,121 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Search, Filter, MoreVertical, Mail, Ban, CheckCircle, XCircle, Eye, Edit, Trash2 } from 'lucide-react';
+import { hzUserService, hzAuthDataService, hzBillService, type HzUser, type HzAuthData } from '../../services/hzDatabase';
+import { toast } from 'sonner';
 
 interface User {
-  id: string;
-  email: string;
-  name: string;
+  id: number;
+  account: string;
   status: 'active' | 'suspended' | 'pending';
   kycStatus: 'verified' | 'pending' | 'rejected' | 'none';
-  balance: string;
-  tradingVolume: string;
+  balance: number;
+  tradingVolume: number;
   joinDate: string;
   lastActive: string;
 }
 
 export function UserManagement() {
+  const [users, setUsers] = useState<User[]>([]);
+  const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'suspended' | 'pending'>('all');
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [showUserModal, setShowUserModal] = useState(false);
+  const [stats, setStats] = useState({
+    totalUsers: 0,
+    activeUsers: 0,
+    verifiedUsers: 0,
+    suspendedUsers: 0,
+  });
 
-  const users: User[] = [
-    {
-      id: '1',
-      email: 'john.doe@example.com',
-      name: 'John Doe',
-      status: 'active',
-      kycStatus: 'verified',
-      balance: '$12,458.50',
-      tradingVolume: '$245,890',
-      joinDate: '2024-01-15',
-      lastActive: '2分钟前'
-    },
-    {
-      id: '2',
-      email: 'alice.smith@example.com',
-      name: 'Alice Smith',
-      status: 'active',
-      kycStatus: 'pending',
-      balance: '$8,234.20',
-      tradingVolume: '$156,420',
-      joinDate: '2024-02-03',
-      lastActive: '1小时前'
-    },
-    {
-      id: '3',
-      email: 'bob.johnson@example.com',
-      name: 'Bob Johnson',
-      status: 'suspended',
-      kycStatus: 'rejected',
-      balance: '$3,456.80',
-      tradingVolume: '$45,230',
-      joinDate: '2024-03-12',
-      lastActive: '3天前'
-    },
-    {
-      id: '4',
-      email: 'carol.white@example.com',
-      name: 'Carol White',
-      status: 'active',
-      kycStatus: 'verified',
-      balance: '$25,789.40',
-      tradingVolume: '$567,890',
-      joinDate: '2023-12-08',
-      lastActive: '30分钟前'
-    },
-    {
-      id: '5',
-      email: 'david.brown@example.com',
-      name: 'David Brown',
-      status: 'pending',
-      kycStatus: 'none',
-      balance: '$0.00',
-      tradingVolume: '$0',
-      joinDate: '2024-06-20',
-      lastActive: '刚刚'
-    },
-  ];
+  useEffect(() => {
+    loadUsers();
+    loadStats();
+  }, [searchQuery, filterStatus]);
+
+  const loadUsers = async () => {
+    setLoading(true);
+    try {
+      const filters: any = {};
+      if (searchQuery) {
+        filters.search = searchQuery;
+      }
+      if (filterStatus !== 'all') {
+        filters.state = filterStatus === 'active' ? 1 : filterStatus === 'suspended' ? 0 : 1;
+      }
+
+      const hzUsers = await hzUserService.getAllUsers(filters, 100, 0);
+      
+      // 获取每个用户的认证状态和余额信息
+      const usersWithDetails = await Promise.all(
+        hzUsers.map(async (hzUser) => {
+          const [authData, bills] = await Promise.all([
+            hzAuthDataService.getAllAuthData({ uid: hzUser.id }, 1, 0),
+            hzBillService.getAllBills({ uid: hzUser.id }, 10, 0),
+          ]);
+
+          const latestAuth = authData[0];
+          let kycStatus: 'verified' | 'pending' | 'rejected' | 'none' = 'none';
+          if (latestAuth) {
+            if (latestAuth.state === 3) kycStatus = 'verified';
+            else if (latestAuth.state === 1) kycStatus = 'pending';
+            else if (latestAuth.state === 2) kycStatus = 'rejected';
+          }
+
+          // 计算总余额（USDT为主）
+          const balance = Number(hzUser.usdtbalance || 0) + 
+                         Number(hzUser.btcbalance || 0) * 87000 + 
+                         Number(hzUser.ethbalance || 0) * 3300;
+
+          // 计算交易量（从资金记录中统计）
+          const tradingVolume = bills
+            .filter(b => b.acttype === 3) // 假设3是交易类型
+            .reduce((sum, b) => sum + Number(b.num || 0), 0);
+
+          return {
+            id: hzUser.id,
+            account: hzUser.account,
+            status: hzUser.state === 1 ? 'active' : 'suspended' as 'active' | 'suspended',
+            kycStatus,
+            balance,
+            tradingVolume,
+            joinDate: hzUser.regtime ? new Date(hzUser.regtime).toLocaleDateString('zh-CN') : 'N/A',
+            lastActive: hzUser.lasttime ? new Date(hzUser.lasttime).toLocaleDateString('zh-CN') : 'N/A',
+          };
+        })
+      );
+
+      setUsers(usersWithDetails);
+    } catch (error) {
+      console.error('加载用户列表失败:', error);
+      toast.error('加载用户列表失败');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadStats = async () => {
+    try {
+      const [total, active, verified, suspended] = await Promise.all([
+        hzUserService.getUserCount(),
+        hzUserService.getUserCount({ state: 1 }),
+        hzAuthDataService.getAllAuthData({ state: 3 }).then(data => data.length),
+        hzUserService.getUserCount({ state: 0 }),
+      ]);
+
+      setStats({
+        totalUsers: total,
+        activeUsers: active,
+        verifiedUsers: verified,
+        suspendedUsers: suspended,
+      });
+    } catch (error) {
+      console.error('加载统计数据失败:', error);
+    }
+  };
 
   const filteredUsers = users.filter(user => {
-    const matchesSearch = user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         user.name.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesSearch = user.account.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesFilter = filterStatus === 'all' || user.status === filterStatus;
     return matchesSearch && matchesFilter;
   });
@@ -137,37 +173,43 @@ export function UserManagement() {
 
       {/* 统计卡片 */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
+        <div className="bg-white/5 backdrop-blur-lg border border-white/10 rounded-xl p-4 shadow-lg shadow-black/20">
           <p className="text-gray-400 text-sm">总用户数</p>
-          <p className="text-2xl font-bold text-white mt-1">12,458</p>
-          <p className="text-[#A3F030] text-xs mt-1">+245 本月</p>
+          <p className="text-2xl font-bold text-white mt-1">{stats.totalUsers.toLocaleString()}</p>
+          <p className="text-[#A3F030] text-xs mt-1">总注册用户</p>
         </div>
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
+        <div className="bg-white/5 backdrop-blur-lg border border-white/10 rounded-xl p-4 shadow-lg shadow-black/20">
           <p className="text-gray-400 text-sm">活跃用户</p>
-          <p className="text-2xl font-bold text-white mt-1">8,234</p>
-          <p className="text-[#A3F030] text-xs mt-1">66% 活跃率</p>
+          <p className="text-2xl font-bold text-white mt-1">{stats.activeUsers.toLocaleString()}</p>
+          <p className="text-[#A3F030] text-xs mt-1">
+            {stats.totalUsers > 0 ? ((stats.activeUsers / stats.totalUsers) * 100).toFixed(1) : 0}% 活跃率
+          </p>
         </div>
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
+        <div className="bg-white/5 backdrop-blur-lg border border-white/10 rounded-xl p-4 shadow-lg shadow-black/20">
           <p className="text-gray-400 text-sm">已认证用户</p>
-          <p className="text-2xl font-bold text-white mt-1">6,789</p>
-          <p className="text-[#A3F030] text-xs mt-1">54.5% 认证率</p>
+          <p className="text-2xl font-bold text-white mt-1">{stats.verifiedUsers.toLocaleString()}</p>
+          <p className="text-[#A3F030] text-xs mt-1">
+            {stats.totalUsers > 0 ? ((stats.verifiedUsers / stats.totalUsers) * 100).toFixed(1) : 0}% 认证率
+          </p>
         </div>
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
+        <div className="bg-white/5 backdrop-blur-lg border border-white/10 rounded-xl p-4 shadow-lg shadow-black/20">
           <p className="text-gray-400 text-sm">停用账户</p>
-          <p className="text-2xl font-bold text-white mt-1">156</p>
-          <p className="text-red-400 text-xs mt-1">1.3% 停用率</p>
+          <p className="text-2xl font-bold text-white mt-1">{stats.suspendedUsers.toLocaleString()}</p>
+          <p className="text-red-400 text-xs mt-1">
+            {stats.totalUsers > 0 ? ((stats.suspendedUsers / stats.totalUsers) * 100).toFixed(1) : 0}% 停用率
+          </p>
         </div>
       </div>
 
       {/* 搜索和筛选 */}
-      <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
+      <div className="bg-white/5 backdrop-blur-lg border border-white/10 rounded-xl p-6 shadow-lg shadow-black/20">
         <div className="flex flex-col md:flex-row gap-4">
           {/* 搜索框 */}
           <div className="flex-1 relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
             <input
               type="text"
-              placeholder="搜索用户邮箱或姓名..."
+              placeholder="搜索用户账号..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-10 pr-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-[#A3F030]/50"
@@ -221,7 +263,7 @@ export function UserManagement() {
       </div>
 
       {/* 用户列表 */}
-      <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+      <div className="bg-white/5 backdrop-blur-lg border border-white/10 rounded-xl overflow-hidden shadow-lg shadow-black/20">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
@@ -238,11 +280,11 @@ export function UserManagement() {
             </thead>
             <tbody className="divide-y divide-slate-800">
               {filteredUsers.map((user) => (
-                <tr key={user.id} className="hover:bg-slate-800/50 transition-colors">
+                <tr key={user.id} className="hover:bg-white/5 transition-colors">
                   <td className="px-6 py-4">
                     <div>
-                      <p className="text-white font-medium">{user.name}</p>
-                      <p className="text-gray-400 text-sm">{user.email}</p>
+                      <p className="text-white font-medium">{user.account}</p>
+                      <p className="text-gray-400 text-sm">ID: {user.id}</p>
                     </div>
                   </td>
                   <td className="px-6 py-4">
@@ -252,10 +294,10 @@ export function UserManagement() {
                     {getKYCBadge(user.kycStatus)}
                   </td>
                   <td className="px-6 py-4 text-right text-white font-medium">
-                    {user.balance}
+                    ${user.balance.toFixed(2)}
                   </td>
                   <td className="px-6 py-4 text-right text-gray-300">
-                    {user.tradingVolume}
+                    ${user.tradingVolume.toFixed(2)}
                   </td>
                   <td className="px-6 py-4 text-gray-300 text-sm">
                     {user.joinDate}
@@ -284,7 +326,11 @@ export function UserManagement() {
 
         {/* 分页 */}
         <div className="px-6 py-4 border-t border-slate-800 flex items-center justify-between">
-          <p className="text-gray-400 text-sm">显示 1-5 of {filteredUsers.length} 用户</p>
+          {loading ? (
+            <p className="text-gray-400 text-sm">加载中...</p>
+          ) : (
+            <p className="text-gray-400 text-sm">显示 1-{filteredUsers.length} of {filteredUsers.length} 用户</p>
+          )}
           <div className="flex gap-2">
             <button className="px-3 py-1 bg-slate-800 text-gray-300 rounded hover:bg-slate-700 transition-colors">
               上一页
