@@ -4,6 +4,7 @@ import { Button } from './ui/button'
 import { Card } from './ui/card'
 import { Badge } from './ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog'
 import { MobileBottomNav } from './MobileBottomNav'
 import { useAuth } from '../hooks/useAuth'
 import { hzRechargeService, hzUserService, hzCoinsCogsService, type HzRecharge, type HzCoinsCogs } from '../services/hzDatabase'
@@ -17,7 +18,9 @@ import {
   Wallet,
   Clock,
   ChevronRight,
-  Search
+  Search,
+  Download,
+  FileText
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { DotSpinner } from './DotSpinner'
@@ -78,6 +81,8 @@ export function DepositPage() {
   const [hzUserId, setHzUserId] = useState<number | null>(null)
   const [supportedAssets, setSupportedAssets] = useState<CryptoAsset[]>([])
   const [assetsLoading, setAssetsLoading] = useState(true)
+  const [showNetworkDialog, setShowNetworkDialog] = useState(false)
+  const [accountType, setAccountType] = useState<'spot' | 'contract'>('spot')
 
   // 加载币种列表
   useEffect(() => {
@@ -130,6 +135,19 @@ export function DepositPage() {
     loadUserAndDeposits()
   }, [authLoading, user, navigate])
 
+  // 当选择币种时，如果没有选择网络，自动打开网络选择对话框
+  useEffect(() => {
+    if (selectedAsset && !selectedNetwork && selectedAsset.networks.length > 0) {
+      // 如果只有一个网络，自动选择
+      if (selectedAsset.networks.length === 1) {
+        setSelectedNetwork(selectedAsset.networks[0])
+      } else {
+        // 多个网络时，打开选择对话框
+        setShowNetworkDialog(true)
+      }
+    }
+  }, [selectedAsset])
+
   // 获取充值地址
   useEffect(() => {
     if (selectedAsset && selectedNetwork && selectedAsset.coinData) {
@@ -145,6 +163,36 @@ export function DepositPage() {
   const copyAddress = () => {
     navigator.clipboard.writeText(depositAddress)
     toast.success('地址已复制到剪贴板')
+  }
+
+  // 保存二维码
+  const saveQRCode = () => {
+    if (!selectedAsset || !depositAddress) return
+    
+    // 创建canvas来生成二维码图片
+    const canvas = document.createElement('canvas')
+    const qrCodeImg = document.querySelector('img[alt="QR Code"]') as HTMLImageElement
+    if (qrCodeImg && qrCodeImg.complete) {
+      canvas.width = qrCodeImg.naturalWidth
+      canvas.height = qrCodeImg.naturalHeight
+      const ctx = canvas.getContext('2d')
+      if (ctx) {
+        ctx.drawImage(qrCodeImg, 0, 0)
+        canvas.toBlob((blob) => {
+          if (blob) {
+            const url = URL.createObjectURL(blob)
+            const a = document.createElement('a')
+            a.href = url
+            a.download = `${selectedAsset.symbol}_${selectedNetwork?.name || 'deposit'}_QR.png`
+            a.click()
+            URL.revokeObjectURL(url)
+            toast.success('二维码已保存')
+          }
+        })
+      }
+    } else {
+      toast.error('二维码未加载完成')
+    }
   }
 
   // 过滤币种
@@ -171,6 +219,25 @@ export function DepositPage() {
       case 0: return '待处理'
       default: return '未知'
     }
+  }
+
+  // 如果正在加载认证状态，显示加载界面
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="text-center">
+          <img
+            src="/logo.1730b8a9.gif"
+            alt="Loading..."
+            style={{
+              maxWidth: '200px',
+              height: 'auto',
+              marginBottom: '20px'
+            }}
+          />
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -255,145 +322,185 @@ export function DepositPage() {
                   )}
                 </div>
               </Card>
-            ) : !selectedNetwork ? (
-              // 选择网络
-              <Card className="bg-white/5 border-white/10">
-                <div className="p-6">
-                  <div className="flex items-center gap-4 mb-6">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setSelectedAsset(null)}
-                      className="text-white/70 hover:text-white p-0"
+            ) : (
+              // 显示充值地址 - 按照截图样式重新设计
+              <div className="space-y-4">
+                {/* 顶部标题栏 */}
+                <div className="flex items-center justify-between mb-6">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setSelectedNetwork(null)
+                      setSelectedAsset(null)
+                    }}
+                    className="text-white/70 hover:text-white p-0"
+                  >
+                    <ArrowLeft className="w-6 h-6" />
+                  </Button>
+                  <h1 className="text-white text-lg font-semibold">{selectedAsset.symbol}</h1>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {/* 可以添加历史记录功能 */}}
+                    className="text-white/70 hover:text-white p-0"
+                  >
+                    <FileText className="w-5 h-5" />
+                  </Button>
+                </div>
+
+                {/* QR码 - 居中显示 */}
+                <div className="flex justify-center mb-6">
+                  {selectedAsset.coinData?.addressqr ? (
+                    <img 
+                      src={selectedAsset.coinData.addressqr} 
+                      alt="QR Code" 
+                      className="w-64 h-64 rounded-lg object-contain bg-white p-4"
+                      id="qr-code-image"
+                    />
+                  ) : depositAddress ? (
+                    <div className="w-64 h-64 bg-white rounded-lg flex items-center justify-center p-4">
+                      <QrCode className="w-56 h-56 text-black" />
+                    </div>
+                  ) : null}
+                </div>
+
+                {/* 选择网络 */}
+                <div className="mb-4">
+                  <label className="text-white/70 text-sm mb-2 block">选择网络</label>
+                  <button
+                    onClick={() => setShowNetworkDialog(true)}
+                    className="w-full p-3 bg-black border border-white/30 rounded-lg text-white text-left flex items-center justify-between hover:bg-black/80 transition-colors"
+                  >
+                    <span>{selectedNetwork ? selectedNetwork.name : '请选择网络'}</span>
+                    <ChevronRight className="w-5 h-5 text-white/40" />
+                  </button>
+                </div>
+
+                {/* 充值地址 */}
+                <div className="mb-4">
+                  <label className="text-white/70 text-sm mb-2 block">充值地址</label>
+                  <div className="flex gap-2">
+                    <div className="flex-1 p-3 bg-black border border-white/30 rounded-lg">
+                      <p className="text-white text-sm break-all">{depositAddress || '请先选择网络'}</p>
+                    </div>
+                    {depositAddress && (
+                      <Button
+                        onClick={copyAddress}
+                        variant="outline"
+                        className="border-white/30 text-white hover:bg-white/10"
+                      >
+                        <Copy className="w-4 h-4" />
+                      </Button>
+                    )}
+                  </div>
+                </div>
+
+                {/* 充值账户/现货账户 */}
+                <div className="mb-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-white/70 text-sm">充值账户</span>
+                    <span className="text-white/70 text-sm">现货账户</span>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setAccountType('spot')}
+                      className={`flex-1 py-2 px-4 rounded-lg text-sm transition-colors ${
+                        accountType === 'spot'
+                          ? 'bg-[#A3F030] text-black'
+                          : 'bg-black border border-white/30 text-white'
+                      }`}
                     >
-                      <ArrowLeft className="w-5 h-5" />
-                    </Button>
-                    <img src={selectedAsset.icon} alt={selectedAsset.symbol} className="w-10 h-10 rounded-full" />
-                    <div>
-                      <h3 className="text-white font-semibold">{selectedAsset.symbol}</h3>
-                      <p className="text-white/50 text-sm">{selectedAsset.name}</p>
+                      现货账户
+                    </button>
+                    <button
+                      onClick={() => setAccountType('contract')}
+                      className={`flex-1 py-2 px-4 rounded-lg text-sm transition-colors ${
+                        accountType === 'contract'
+                          ? 'bg-[#A3F030] text-black'
+                          : 'bg-black border border-white/30 text-white'
+                      }`}
+                    >
+                      合约账户
+                    </button>
+                  </div>
+                </div>
+
+                {/* 最小充值数量 */}
+                <div className="mb-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-white/70 text-sm">最小充值数量</span>
+                    <span className="text-white">{selectedNetwork?.minDeposit || 0} {selectedAsset.symbol}</span>
+                  </div>
+                </div>
+
+                {/* 合约信息 */}
+                {selectedNetwork && (
+                  <div className="mb-4">
+                    <span className="text-white/70 text-sm">合约信息</span>
+                    <div className="mt-2 p-3 bg-black border border-white/30 rounded-lg">
+                      <p className="text-white text-sm break-all">{depositAddress}</p>
                     </div>
                   </div>
+                )}
 
-                  <h4 className="text-white font-semibold mb-4">选择充值网络</h4>
-                  
-                  <div className="space-y-3">
+                {/* 充值须知 */}
+                <div className="mb-6">
+                  <h4 className="text-white font-semibold mb-3">充值须知</h4>
+                  <div className="space-y-2 text-sm text-white/70">
+                    <p>注意:请在确认币种和地址后进行充值,充入其他地址无法找回!</p>
+                    <p>最小充值:{selectedNetwork?.minDeposit || 0} {selectedAsset.symbol},小于最小金额的充值将不会上账且无法退回。</p>
+                    <p>注意:您充值至上述地址后,需要整个网络节点的确认,{selectedNetwork?.confirmations || 0}次网络确认后到账,到账后可提币。</p>
+                  </div>
+                </div>
+
+                {/* 保存二维码按钮 */}
+                {depositAddress && (
+                  <Button
+                    onClick={saveQRCode}
+                    className="w-full h-12 bg-[#A3F030] hover:bg-[#8FD622] text-black rounded-xl text-base font-semibold"
+                  >
+                    <Download className="w-5 h-5 mr-2" />
+                    保存二维码
+                  </Button>
+                )}
+              </div>
+            )}
+
+            {/* 网络选择对话框 */}
+            <Dialog open={showNetworkDialog} onOpenChange={setShowNetworkDialog}>
+              <DialogContent className="bg-black border-white/30 text-white max-w-[90vw] rounded-2xl p-0">
+                <DialogHeader className="border-b border-white/30 px-6 py-4">
+                  <DialogTitle className="text-white text-lg">选择网络</DialogTitle>
+                </DialogHeader>
+                <div className="px-6 py-4">
+                  <div className="mb-4 p-3 bg-orange-500/10 border border-orange-500/30 rounded-lg">
+                    <p className="text-orange-400 text-sm">
+                      请确保您选择的网络和您充值与提现时选择的网络一致,否则可能造成资产损失!
+                    </p>
+                  </div>
+                  <div className="space-y-2">
                     {selectedAsset.networks.map((network) => (
-                      <div
+                      <button
                         key={network.id}
-                        onClick={() => setSelectedNetwork(network)}
-                        className="p-4 bg-white/5 rounded-lg hover:bg-white/10 transition-all cursor-pointer"
+                        onClick={() => {
+                          setSelectedNetwork(network)
+                          setShowNetworkDialog(false)
+                        }}
+                        className={`w-full p-4 rounded-lg text-left transition-all ${
+                          selectedNetwork?.id === network.id
+                            ? 'bg-[#A3F030]/20 border-2 border-[#A3F030]'
+                            : 'bg-black border-2 border-white/30 hover:bg-black/80'
+                        }`}
                       >
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="text-white font-semibold">{network.name}</span>
-                          <ChevronRight className="w-5 h-5 text-white/40" />
-                        </div>
-                        <div className="text-white/50 text-sm mb-2">{network.fullName}</div>
-                        <div className="flex items-center gap-4 text-xs">
-                          <span className="text-white/40">最小充值: {network.minDeposit} {selectedAsset.symbol}</span>
-                          <span className="text-white/40">预计到账: {network.estimatedTime}</span>
-                        </div>
-                      </div>
+                        <div className="text-white font-semibold">{network.name}</div>
+                        <div className="text-white/50 text-sm mt-1">{network.fullName}</div>
+                      </button>
                     ))}
                   </div>
                 </div>
-              </Card>
-            ) : (
-              // 显示充值地址
-              <div className="space-y-4">
-                {/* 返回按钮和网络信息 */}
-                <Card className="bg-white/5 border-white/10">
-                  <div className="p-6">
-                    <div className="flex items-center gap-4 mb-6">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setSelectedNetwork(null)}
-                        className="text-white/70 hover:text-white p-0"
-                      >
-                        <ArrowLeft className="w-5 h-5" />
-                      </Button>
-                      <img src={selectedAsset.icon} alt={selectedAsset.symbol} className="w-10 h-10 rounded-full" />
-                      <div className="flex-1">
-                        <h3 className="text-white font-semibold">{selectedAsset.symbol}</h3>
-                        <p className="text-white/50 text-sm">{selectedNetwork.name}</p>
-                      </div>
-                    </div>
-
-                    {/* 充值地址 */}
-                    <div className="space-y-4">
-                      <div>
-                        <label className="text-white/70 text-sm mb-2 block">充值地址</label>
-                        <div className="flex gap-2">
-                          <div className="flex-1 p-3 bg-white/5 border border-white/10 rounded-lg">
-                            <p className="text-white text-sm break-all">{depositAddress}</p>
-                          </div>
-                          <Button
-                            onClick={copyAddress}
-                            className="bg-[#A3F030] hover:bg-[#8FD622] text-black"
-                          >
-                            <Copy className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      </div>
-
-                      {/* 二维码 */}
-                      {selectedAsset.coinData?.addressqr ? (
-                        <div className="flex justify-center">
-                          <img 
-                            src={selectedAsset.coinData.addressqr} 
-                            alt="QR Code" 
-                            className="w-48 h-48 rounded-lg object-contain bg-white p-2"
-                            onError={(e) => {
-                              // 如果二维码加载失败，显示占位符
-                              (e.target as HTMLImageElement).style.display = 'none';
-                              const parent = (e.target as HTMLImageElement).parentElement;
-                              if (parent) {
-                                parent.innerHTML = '<div class="w-48 h-48 bg-white rounded-lg flex items-center justify-center"><svg class="w-40 h-40 text-black" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2.01M19 8h2.01M12 16h.01M16 4h.01M8 4h.01M4 4h.01M4 20h.01M8 20h.01M12 20h.01M16 20h.01M20 20h.01" /></svg></div>';
-                              }
-                            }}
-                          />
-                        </div>
-                      ) : (
-                        <div className="flex justify-center">
-                          <div className="w-48 h-48 bg-white rounded-lg flex items-center justify-center">
-                            <QrCode className="w-40 h-40 text-black" />
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </Card>
-
-                {/* 充值信息 */}
-                <Card className="bg-white/5 border-white/10">
-                  <div className="p-6">
-                    <div className="flex items-center gap-2 mb-4">
-                      <Info className="w-5 h-5 text-[#A3F030]" />
-                      <h4 className="text-white font-semibold">充值须知</h4>
-                    </div>
-                    <div className="space-y-3 text-sm text-white/70">
-                      <div className="flex items-start gap-2">
-                        <AlertCircle className="w-4 h-4 text-yellow-400 flex-shrink-0 mt-0.5" />
-                        <p>最小充值金额: {selectedNetwork.minDeposit} {selectedAsset.symbol}</p>
-                      </div>
-                      <div className="flex items-start gap-2">
-                        <Clock className="w-4 h-4 text-blue-400 flex-shrink-0 mt-0.5" />
-                        <p>需要 {selectedNetwork.confirmations} 个区块确认，预计 {selectedNetwork.estimatedTime} 到账</p>
-                      </div>
-                      <div className="flex items-start gap-2">
-                        <Wallet className="w-4 h-4 text-purple-400 flex-shrink-0 mt-0.5" />
-                        <p>请勿向该地址充值任何非 {selectedAsset.symbol} 资产，否则资产将不可找回</p>
-                      </div>
-                      <div className="flex items-start gap-2">
-                        <CheckCircle2 className="w-4 h-4 text-green-400 flex-shrink-0 mt-0.5" />
-                        <p>充值到账后，我们会通过邮件/短信通知您</p>
-                      </div>
-                    </div>
-                  </div>
-                </Card>
-              </div>
-            )}
+              </DialogContent>
+            </Dialog>
           </TabsContent>
 
           {/* 充值记录标签页 */}

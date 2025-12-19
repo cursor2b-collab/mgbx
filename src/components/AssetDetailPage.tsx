@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
+import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from './ui/button'
 import { Card } from './ui/card'
 import { 
   ChevronDown,
   History,
-  RefreshCcw
+  RefreshCcw,
+  X
 } from 'lucide-react'
 import { ChevronLeftIcon } from './ui/chevron-left-icon'
 import { useAuth } from '../hooks/useAuth'
@@ -46,6 +48,7 @@ export function AssetDetailPage() {
   const [filterType, setFilterType] = useState<'all' | 'deposit' | 'withdraw' | 'transfer'>('all')
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
+  const [showFilterDrawer, setShowFilterDrawer] = useState(false)
 
   // 理财产品数据（模拟数据，实际应该从数据库读取）
   const financialProducts: FinancialProduct[] = [
@@ -277,7 +280,7 @@ export function AssetDetailPage() {
 
       <div className="max-w-7xl mx-auto px-4 py-6 space-y-6">
         {/* 资产余额卡片 */}
-        <Card className="bg-white/5 border-white/10">
+        <Card className="bg-black border-white/30">
           <div className="p-6">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-white text-lg font-semibold">资产余额</h2>
@@ -350,23 +353,20 @@ export function AssetDetailPage() {
         <div>
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-white text-lg font-semibold">历史记录</h2>
-            <div className="relative">
-              <select
-                value={filterType}
-                onChange={(e) => setFilterType(e.target.value as any)}
-                className="appearance-none bg-white/5 border border-white/10 rounded-lg px-4 py-2 pr-8 text-white text-sm focus:outline-none focus:border-[#A3F030]/50"
-              >
-                <option value="all" className="bg-slate-900">全部</option>
-                <option value="deposit" className="bg-slate-900">充值</option>
-                <option value="withdraw" className="bg-slate-900">提现</option>
-                <option value="transfer" className="bg-slate-900">转账</option>
-              </select>
-              <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40 pointer-events-none" />
-            </div>
+            <Button
+              onClick={() => setShowFilterDrawer(true)}
+              variant="outline"
+              className="bg-black border-white/30 text-white hover:bg-black/80 px-4 py-2 h-9"
+            >
+              {filterType === 'all' ? '全部' : 
+               filterType === 'deposit' ? '充值' : 
+               filterType === 'withdraw' ? '提现' : '转账'}
+              <ChevronDown className="w-4 h-4 ml-2" />
+            </Button>
           </div>
 
           {filteredTransactions.length === 0 ? (
-            <Card className="bg-white/5 border-white/10">
+            <Card className="bg-black border-white/30">
               <div className="p-8 text-center">
                 <History className="w-12 h-12 text-white/20 mx-auto mb-3" />
                 <p className="text-white/50 text-sm">暂无交易记录</p>
@@ -375,7 +375,7 @@ export function AssetDetailPage() {
           ) : (
             <div className="space-y-2">
               {filteredTransactions.map((tx) => (
-                <Card key={tx.id} className="bg-white/5 border-white/10 hover:bg-white/10 transition-all">
+                <Card key={tx.id} className="bg-black border-white/30 hover:bg-black/80 transition-all">
                   <div className="p-4">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
@@ -439,6 +439,76 @@ export function AssetDetailPage() {
           </div>
         </div>
       </div>
+
+      {/* 筛选抽屉 */}
+      <AnimatePresence>
+        {showFilterDrawer && (
+          <>
+            {/* 背景遮罩 */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowFilterDrawer(false)}
+              className="fixed inset-0 bg-black/50 z-[1039]"
+            />
+            {/* 抽屉面板 */}
+            <motion.div
+              initial={{ y: '100%' }}
+              animate={{ y: 0 }}
+              exit={{ y: '100%' }}
+              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              className="fixed bottom-0 left-0 right-0 bg-black rounded-t-[24px] shadow-2xl z-[1040]"
+              style={{
+                borderTopLeftRadius: '24px',
+                borderTopRightRadius: '24px',
+              }}
+            >
+              <div className="px-6 pb-8 pt-6">
+                {/* 标题栏 */}
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-white text-lg font-semibold">选择筛选类型</h2>
+                  <button
+                    onClick={() => setShowFilterDrawer(false)}
+                    className="w-8 h-8 flex items-center justify-center text-white/60 hover:text-white"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                {/* 筛选选项 */}
+                <div className="space-y-2">
+                  {(['all', 'deposit', 'withdraw', 'transfer'] as const).map((type) => (
+                    <Card
+                      key={type}
+                      onClick={() => {
+                        setFilterType(type)
+                        setShowFilterDrawer(false)
+                      }}
+                      className={`bg-black border border-white/30 p-4 cursor-pointer hover:bg-black/80 transition-colors ${
+                        filterType === type ? 'border-[#A3F030] bg-[#A3F030]/10' : ''
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-white font-medium">
+                          {type === 'all' ? '全部' : 
+                           type === 'deposit' ? '充值' : 
+                           type === 'withdraw' ? '提现' : '转账'}
+                        </span>
+                        {filterType === type && (
+                          <div className="w-5 h-5 rounded-full bg-[#A3F030] flex items-center justify-center">
+                            <div className="w-2 h-2 rounded-full bg-black" />
+                          </div>
+                        )}
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

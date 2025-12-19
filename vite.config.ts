@@ -53,7 +53,18 @@
     },
     build: {
       target: 'esnext',
-      outDir: 'build',
+      outDir: 'dist',
+      assetsDir: 'assets',
+      sourcemap: false,
+      minify: 'terser',
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            'react-vendor': ['react', 'react-dom', 'react-router-dom'],
+            'supabase-vendor': ['@supabase/supabase-js', '@jsr/supabase__supabase-js'],
+          },
+        },
+      },
     },
     server: {
       port: 3000,

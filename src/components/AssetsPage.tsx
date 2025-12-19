@@ -575,18 +575,6 @@ export function AssetsPage() {
 
           {/* 资产列表 */}
           <TabsContent value="assets" className="space-y-4">
-            {/* 搜索框 */}
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-white/40" />
-              <input
-                type="text"
-                placeholder="搜索币种..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full h-11 pl-10 pr-4 bg-white/5 border border-white/10 rounded-lg text-white placeholder:text-white/40 focus:outline-none focus:border-[#A3F030]/50"
-              />
-            </div>
-
             {/* 资产列表 */}
             {filteredAssets.length === 0 ? (
               <Card className="bg-white/5 border-white/10">
@@ -604,7 +592,7 @@ export function AssetsPage() {
                   <Card 
                     key={asset.id} 
                     onClick={() => navigate(`/asset/${asset.symbol}`)}
-                    className="bg-white/5 border-white/10 hover:bg-white/10 transition-all cursor-pointer"
+                    className="bg-black border-white/30 hover:bg-black/80 transition-all cursor-pointer"
                   >
                     <div className="p-4">
                       <div className="flex items-center gap-4">
@@ -746,7 +734,7 @@ export function AssetsPage() {
 
             {/* 交易记录列表 */}
             {filteredTransactions.length === 0 ? (
-              <Card className="bg-white/5 border-white/10">
+              <Card className="bg-black border-white/30">
                 <div className="p-8 text-center space-y-3">
                   <div className="mx-auto w-14 h-14 rounded-full bg-white/10 flex items-center justify-center">
                     <History className="w-7 h-7 text-white/60" />

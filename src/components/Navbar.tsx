@@ -11,7 +11,8 @@ import {
   User,
   LogIn,
   MessageSquare,
-  BarChart3
+  BarChart3,
+  LogOut
 } from 'lucide-react'
 import { LanguageSwitcher } from './LanguageSwitcher'
 import { useLanguage } from '../contexts/LanguageContext'
@@ -20,10 +21,20 @@ import { useAuth } from '../hooks/useAuth'
 export function Navbar() {
   const navigate = useNavigate()
   const location = useLocation()
-  const { isAuthenticated, user } = useAuth()
+  const { isAuthenticated, user, signOut } = useAuth()
   const { t } = useLanguage()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [isMobile, setIsMobile] = useState(window.innerWidth < 992)
+
+  // 处理退出登录
+  const handleLogout = async () => {
+    try {
+      await signOut()
+      navigate('/')
+    } catch (error) {
+      console.error('退出登录失败:', error)
+    }
+  }
 
   // 检测是否为移动设备 - 添加防抖优化
   useEffect(() => {
@@ -138,10 +149,26 @@ export function Navbar() {
               </>
             )}
             
-            {/* 语言切换 */}
-            <div className="ml-1">
-              <LanguageSwitcher />
-            </div>
+            {/* 移动端：已登录时显示退出登录按钮，未登录时显示语言切换 */}
+            {isMobile ? (
+              isAuthenticated ? (
+                <Button
+                  onClick={handleLogout}
+                  variant="ghost"
+                  className="h-8 px-3 text-white/90 hover:text-white hover:bg-white/5"
+                >
+                  <LogOut className="w-4 h-4" />
+                </Button>
+              ) : (
+                <div className="ml-1">
+                  <LanguageSwitcher />
+                </div>
+              )
+            ) : (
+              <div className="ml-1">
+                <LanguageSwitcher />
+              </div>
+            )}
 
             {/* 桌面端：通知和消息 */}
             {!isMobile && isAuthenticated && (
