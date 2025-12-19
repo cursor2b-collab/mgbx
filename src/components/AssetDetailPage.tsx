@@ -209,8 +209,14 @@ export function AssetDetailPage() {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
-          <div className="w-16 h-16 border-4 border-[#A3F030] border-t-transparent rounded-full animate-spin" />
-          <p className="text-white/50">加载中...</p>
+          <img 
+            src="/logo.1730b8a9.gif" 
+            alt="Loading..." 
+            style={{
+              maxWidth: '200px',
+              height: 'auto'
+            }}
+          />
         </div>
       </div>
     )

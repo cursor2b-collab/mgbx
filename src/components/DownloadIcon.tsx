@@ -1,33 +1,42 @@
 'use client';
 
-import type { Transition } from 'motion/react';
+import type { Variants } from 'motion/react';
 import type { HTMLAttributes } from 'react';
 import { forwardRef, useCallback, useImperativeHandle, useRef } from 'react';
 import { motion, useAnimation } from 'motion/react';
 
-import { cn } from '../../lib/utils';
+import { cn } from '@/lib/utils';
 
-export interface ChevronLeftIconHandle {
+export interface DownloadIconHandle {
   startAnimation: () => void;
   stopAnimation: () => void;
 }
 
-interface ChevronLeftIconProps extends HTMLAttributes<HTMLDivElement> {
+interface DownloadIconProps extends HTMLAttributes<HTMLDivElement> {
   size?: number;
 }
 
-const DEFAULT_TRANSITION: Transition = {
-  times: [0, 0.4, 1],
-  duration: 0.5,
+const ARROW_VARIANTS: Variants = {
+  normal: { y: 0 },
+  animate: {
+    y: 2,
+    transition: {
+      type: 'spring',
+      stiffness: 200,
+      damping: 10,
+      mass: 1,
+    },
+  },
 };
 
-const ChevronLeftIcon = forwardRef<ChevronLeftIconHandle, ChevronLeftIconProps>(
+export const DownloadIcon = forwardRef<DownloadIconHandle, DownloadIconProps>(
   ({ onMouseEnter, onMouseLeave, className, size = 28, ...props }, ref) => {
     const controls = useAnimation();
     const isControlledRef = useRef(false);
 
     useImperativeHandle(ref, () => {
       isControlledRef.current = true;
+
       return {
         startAnimation: () => controls.start('animate'),
         stopAnimation: () => controls.start('normal'),
@@ -74,25 +83,16 @@ const ChevronLeftIcon = forwardRef<ChevronLeftIconHandle, ChevronLeftIconProps>(
           strokeLinecap="round"
           strokeLinejoin="round"
         >
-          <motion.path
-            variants={{
-              normal: { x: 0 },
-              animate: { x: [0, -2, 0] },
-            }}
-            transition={DEFAULT_TRANSITION}
-            animate={controls}
-            d="m15 18-6-6 6-6"
-          />
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+          <motion.g variants={ARROW_VARIANTS} animate={controls}>
+            <polyline points="7 10 12 15 17 10" />
+            <line x1="12" x2="12" y1="15" y2="3" />
+          </motion.g>
         </svg>
       </div>
     );
   }
 );
 
-ChevronLeftIcon.displayName = 'ChevronLeftIcon';
-
-export { ChevronLeftIcon };
-
-
-
+DownloadIcon.displayName = 'DownloadIcon';
 

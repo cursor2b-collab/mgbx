@@ -1,7 +1,11 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import React from 'react'
 import { Button } from './ui/button'
 import { Input } from './ui/input'
 import { ChevronLeft, Plus, DollarSign } from 'lucide-react'
+import { useAuth } from '../hooks/useAuth'
+import { hzUserService } from '../services/hzDatabase'
+import { toast } from 'sonner'
 
 interface StakingPlan {
   id: string
@@ -54,11 +58,38 @@ const CoinIcon = ({ symbol, className = '' }: { symbol: string; className?: stri
 }
 
 export function MobileStakingPage() {
+  const { user } = useAuth()
   const [selectedPlan, setSelectedPlan] = useState<StakingPlan | null>(null)
   const [selectedCoins, setSelectedCoins] = useState<string[]>(['USDC'])
   const [investAmount, setInvestAmount] = useState('')
   const [sliderValue, setSliderValue] = useState(0)
-  const [availableBalance] = useState(1000000)
+  const [availableBalance, setAvailableBalance] = useState(0)
+  const [balanceLoading, setBalanceLoading] = useState(true)
+
+  // 从数据库获取用户USDT余额
+  useEffect(() => {
+    const loadBalance = async () => {
+      if (!user) {
+        setBalanceLoading(false)
+        return
+      }
+
+      try {
+        setBalanceLoading(true)
+        const hzUser = await hzUserService.getOrCreateUserFromAuth(user.email || '')
+        // 获取USDT余额，如果没有则默认为0
+        setAvailableBalance(hzUser.usdtbalance || 0)
+      } catch (error: any) {
+        console.error('获取余额失败:', error)
+        toast.error('获取余额失败')
+        setAvailableBalance(0)
+      } finally {
+        setBalanceLoading(false)
+      }
+    }
+
+    loadBalance()
+  }, [user])
 
   const stakingPlans: StakingPlan[] = [
     {
@@ -160,12 +191,12 @@ export function MobileStakingPage() {
   // 列表页面
   if (!selectedPlan) {
     return (
-      <div className="min-h-[calc(100vh-120px)] bg-[#0A0A0A] px-4 py-6">
+      <div className="min-h-[calc(100vh-120px)] bg-black px-4 py-6">
         <div className="space-y-4">
           {stakingPlans.map((plan) => (
             <div
               key={plan.id}
-              className="bg-[#1A1A1A] rounded-2xl p-5 border border-white/10"
+              className="bg-black rounded-2xl p-5 border border-white/30"
             >
               {/* 计划标题 */}
               <div className="flex items-center gap-3 mb-4">
@@ -176,7 +207,7 @@ export function MobileStakingPage() {
                     return (
                       <div
                         key={coinSymbol}
-                        className={`w-8 h-8 rounded-full bg-gradient-to-br ${coin.gradient} flex items-center justify-center text-white text-sm border-2 border-[#1A1A1A]`}
+                        className={`w-8 h-8 rounded-full bg-gradient-to-br ${coin.gradient} flex items-center justify-center text-white text-sm border-2 border-black`}
                         style={{ zIndex: plan.coins.length - index }}
                       >
                         <CoinIcon symbol={coinSymbol} className="w-5 h-5" />
@@ -234,23 +265,12 @@ export function MobileStakingPage() {
 
   // 详情页面
   return (
-    <div className="min-h-[calc(100vh-120px)] bg-[#0A0A0A]">
-      {/* 顶部标题栏 */}
-      <div className="sticky top-0 bg-[#0A0A0A] border-b border-white/10 px-4 py-4 flex items-center gap-4 z-10">
-        <button
-          onClick={() => setSelectedPlan(null)}
-          className="p-2 -ml-2 hover:bg-white/10 rounded-lg transition-colors"
-        >
-          <ChevronLeft className="w-6 h-6 text-white" />
-        </button>
-        <h1 className="text-white text-lg">质押挖矿交易</h1>
-      </div>
-
+    <div className="min-h-[calc(100vh-120px)] bg-black">
       <div className="px-4 py-6">
         {/* 认购组合 */}
         <div className="mb-6">
-          <h2 className="text-white mb-4">认购组合</h2>
-          <div className="flex items-center gap-3 flex-wrap">
+          <h2 className="text-white mb-4 text-center">认购组合</h2>
+          <div className="flex items-center gap-3">
             {selectedPlan.coins.map((coinSymbol, index) => {
               const coin = availableCoins.find(c => c.symbol === coinSymbol)
               if (!coin) return null
@@ -258,35 +278,40 @@ export function MobileStakingPage() {
               const isSelected = selectedCoins.includes(coinSymbol)
               
               return (
-                <div key={coinSymbol} className="flex items-center gap-3">
+                <React.Fragment key={coinSymbol}>
                   {index > 0 && (
-                    <div className="w-10 h-10 rounded-full bg-[#A3F030] flex items-center justify-center">
+                    <div className="w-10 h-10 rounded-full bg-[#A3F030] flex items-center justify-center flex-shrink-0">
                       <Plus className="w-5 h-5 text-black" />
                     </div>
                   )}
                   <button
                     onClick={() => handleCoinToggle(coinSymbol)}
-                    className={`transition-all ${
+                    className={`transition-all flex-1 flex flex-col items-center justify-center h-[140px] ${
                       isSelected 
                         ? 'opacity-100 scale-100' 
                         : 'opacity-50 scale-95'
                     }`}
+                    style={{ minWidth: 0 }}
                   >
-                    <div className="bg-[#1A1A1A] rounded-2xl p-4 border-2 border-white/10 min-w-[120px]">
-                      <div className={`w-12 h-12 rounded-full bg-gradient-to-br ${coin.gradient} flex items-center justify-center text-white text-xl mx-auto mb-2`}>
+                    {coinSymbol === 'USDC' ? (
+                      <img src="/imges/usdc.png" alt="USDC" className="w-20 h-20 mb-2 object-contain" />
+                    ) : coinSymbol === 'USDT' ? (
+                      <img src="/imges/usdt.png" alt="USDT" className="w-20 h-20 mb-2 object-contain" />
+                    ) : (
+                      <div className={`w-12 h-12 rounded-full bg-gradient-to-br ${coin.gradient} flex items-center justify-center text-white text-xl mb-2`}>
                         <CoinIcon symbol={coinSymbol} className="w-5 h-5" />
                       </div>
-                      <div className="text-white text-center">{coin.symbol}</div>
-                    </div>
+                    )}
+                    <div className="text-white text-center">{coin.symbol}</div>
                   </button>
-                </div>
+                </React.Fragment>
               )
             })}
           </div>
         </div>
 
         {/* 计划信息 */}
-        <div className="bg-[#1A1A1A] rounded-2xl p-4 mb-6 border border-white/10">
+        <div className="bg-black rounded-2xl p-4 mb-6 border border-white/30">
           <div className="grid grid-cols-2 gap-4">
             <div className="flex items-center justify-between">
               <span className="text-white/50 text-sm">运行时长</span>
@@ -322,7 +347,7 @@ export function MobileStakingPage() {
             <div className="flex items-center justify-between mb-2">
               <span className="text-white/50 text-sm">投资额</span>
               <button className="text-sm text-[#A3F030]">
-                可用 {availableBalance.toLocaleString()} USDT
+                {balanceLoading ? '加载中...' : `可用 ${availableBalance.toLocaleString()} USDT`}
               </button>
             </div>
             
@@ -332,7 +357,7 @@ export function MobileStakingPage() {
                 placeholder="请输入金额"
                 value={investAmount}
                 onChange={(e) => setInvestAmount(e.target.value)}
-                className="bg-[#1A1A1A] border-white/10 text-white h-14 pr-16 text-lg placeholder:text-white/30"
+                className="bg-black border-white/30 text-white h-14 pr-16 text-lg placeholder:text-white/30"
               />
               <div className="absolute right-4 top-1/2 -translate-y-1/2 text-white">
                 USDT
@@ -406,12 +431,12 @@ export function MobileStakingPage() {
         )}
 
         {/* 收益说明 */}
-        <div className="mt-6 px-4 py-4 bg-blue-500/10 border border-blue-500/30 rounded-lg">
+        <div className="mt-6 px-4 py-4">
           <div className="flex items-start gap-2">
-            <div className="text-blue-500 mt-0.5">ⓘ</div>
-            <div className="text-sm text-blue-400">
-              <p className="mb-2">收益说明：</p>
-              <ul className="text-xs text-blue-300/80 space-y-1">
+            <div className="text-blue-500 mt-0.5 text-lg">ⓘ</div>
+            <div className="text-base text-blue-400">
+              <p className="mb-2 text-lg">收益说明：</p>
+              <ul className="text-sm text-blue-300/80 space-y-1">
                 <li>• 每日收益自动复投，收益按日计算</li>
                 <li>• 到期后本金和收益自动返还至账户</li>
                 <li>• 提前赎回可能会损失部分收益</li>

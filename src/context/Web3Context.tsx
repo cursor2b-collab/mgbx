@@ -11,10 +11,10 @@ import { mainnet } from '@reown/appkit/networks'
 const queryClient = new QueryClient()
 
 const metadata = {
-  name: 'Exchange Login Registration Page',
-  description: '加密货币交易所登录注册页面',
+  name: 'MGBX',
+  description: 'MGBX 加密货币交易所',
   url: typeof window !== 'undefined' ? window.location.origin : 'https://your-app-url.com',
-  icons: ['https://your-icon-url.com/icon.png'],
+  icons: ['/favicon.ico'],
 }
 
 // 标记 AppKit 是否已初始化

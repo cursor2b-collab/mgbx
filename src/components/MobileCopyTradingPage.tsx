@@ -2,7 +2,6 @@ import { useState } from 'react'
 import { Button } from './ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from './ui/dialog'
 import { Badge } from './ui/badge'
-import { X } from 'lucide-react'
 
 interface Trader {
   id: string
@@ -163,7 +162,7 @@ export function MobileCopyTradingPage() {
             {topTraders.map((trader) => (
               <div
                 key={trader.id}
-                className="bg-[#1A1A1A] rounded-2xl p-4 border border-white/10"
+                className="bg-black rounded-2xl p-4 border border-white/30"
               >
                 {/* 交易员信息 */}
                 <div className="flex items-start gap-3 mb-4">
@@ -228,7 +227,7 @@ export function MobileCopyTradingPage() {
               myCopyTrades.map((copyTrade) => (
                 <div
                   key={copyTrade.trader.id}
-                  className="bg-[#1A1A1A] rounded-2xl p-4 border border-white/10"
+                  className="bg-black rounded-2xl p-4 border border-white/30"
                 >
                   <div className="flex items-start gap-3 mb-3">
                     <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#A3F030]/20 to-[#A3F030]/5 flex items-center justify-center text-2xl border-2 border-[#A3F030]/30">
@@ -264,17 +263,9 @@ export function MobileCopyTradingPage() {
 
       {/* 跟单确认对话框 */}
       <Dialog open={confirmDialog.open} onOpenChange={(open) => !open && setConfirmDialog({ open: false, trader: null })}>
-        <DialogContent className="bg-[#1A1A1A] border border-white/10 text-white max-w-[90vw] rounded-2xl p-0">
-          <DialogHeader className="border-b border-white/10 px-6 py-4">
-            <div className="flex items-center justify-between">
-              <DialogTitle className="text-white text-lg">跟单</DialogTitle>
-              <button 
-                onClick={() => setConfirmDialog({ open: false, trader: null })}
-                className="p-1 hover:bg-white/10 rounded-lg transition-colors"
-              >
-                <X className="w-5 h-5 text-white/60" />
-              </button>
-            </div>
+        <DialogContent className="bg-black border border-white/30 text-white max-w-[90vw] rounded-2xl p-0">
+          <DialogHeader className="border-b border-white/30 px-6 py-4">
+            <DialogTitle className="text-white text-lg">跟单</DialogTitle>
             <DialogDescription className="sr-only">
               设置跟单参数
             </DialogDescription>

@@ -201,7 +201,7 @@ export function MobileTradingPage() {
   return (
     <div className="min-h-screen bg-black text-white pb-24">
       {/* 顶部导航栏 */}
-      <div className="sticky top-0 z-50 bg-[#0A0A0A] border-b border-white/10">
+      <div className="sticky top-0 z-50 bg-black border-b border-white/10">
         <div className="flex items-center justify-between px-4 py-3">
           <button onClick={() => navigate('/')} className="p-2 -ml-2">
             <ChevronLeft className="w-6 h-6 text-white" />

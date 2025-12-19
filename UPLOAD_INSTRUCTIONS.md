@@ -114,3 +114,6 @@ rsync -avz "C:\Users\alex\Desktop\Exchange Login Registration Page (1)\build\" r
 上传完成后，你的React应用应该可以通过 `1568game.com` 正常访问了！
 
 
+
+
+

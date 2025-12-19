@@ -37,6 +37,8 @@ import { hzUserService } from '../services/hzDatabase'
 import { ImageWithFallback } from './figma/ImageWithFallback'
 import { motion, AnimatePresence } from 'motion/react'
 import * as echarts from 'echarts'
+import { DownloadIcon } from './DownloadIcon'
+import { UsersIcon } from './UsersIcon'
 
 // 市场数据
 interface MarketData {
@@ -237,11 +239,12 @@ export function MobileHomepage() {
   ]
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
   const [isFirstLoad, setIsFirstLoad] = useState(true)
+  const [showDepositModal, setShowDepositModal] = useState(false)
   
   // 服务功能列表
   const serviceFeatures = [
     { icon: FileText, label: '合约', href: '/trading' },
-    { icon: Users, label: '邀请中心', href: '/invite', badge: '01' },
+    { icon: Users, label: '邀请中心', href: '/invite' },
     { icon: Gift, label: '红包', href: '/redpacket' },
     { icon: Wallet, label: '理财', href: '/lending' },
     { icon: Copy, label: '跟单', href: '/mobile?tab=copy' },
@@ -576,7 +579,7 @@ export function MobileHomepage() {
 
           {/* 充值按钮 */}
           <Button
-            onClick={() => navigate('/deposit')}
+            onClick={() => setShowDepositModal(true)}
             className="w-full bg-[#A3F030] hover:bg-[#8FD622] text-black rounded-xl py-3 text-base font-semibold mb-6"
           >
             充值
@@ -839,6 +842,106 @@ export function MobileHomepage() {
           </Card>
         </section>
       )}
+
+      {/* 选择充值方式抽屉 */}
+      <AnimatePresence>
+        {showDepositModal && (
+          <>
+            {/* 背景遮罩 */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowDepositModal(false)}
+              className="fixed inset-0 bg-black/60"
+              style={{ zIndex: 1040 }}
+            />
+            
+            {/* 抽屉面板 */}
+            <motion.div
+              initial={{ y: '100%' }}
+              animate={{ y: 0 }}
+              exit={{ y: '100%' }}
+              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              className="fixed bottom-0 left-0 right-0 bg-black rounded-t-[24px] shadow-2xl"
+              style={{
+                borderTopLeftRadius: '24px',
+                borderTopRightRadius: '24px',
+                zIndex: 1040
+              }}
+            >
+              {/* 拖拽指示器 */}
+              <div className="flex justify-center pt-3 pb-2">
+                <div className="w-12 h-1 bg-white/20 rounded-full" />
+              </div>
+
+              {/* 抽屉内容 */}
+              <div className="px-6 pb-8">
+                {/* 标题栏 */}
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-white text-lg font-semibold">选择充值方式</h2>
+                  <button
+                    onClick={() => setShowDepositModal(false)}
+                    className="w-8 h-8 flex items-center justify-center text-white/60 hover:text-white"
+                  >
+                    <span className="text-2xl">×</span>
+                  </button>
+                </div>
+
+                {/* 已有数字资产 */}
+                <div className="mb-6">
+                  <h3 className="text-white/70 text-sm mb-3">已有数字资产</h3>
+                  <Card
+                    onClick={() => {
+                      setShowDepositModal(false)
+                      navigate('/deposit/legacy')
+                    }}
+                    className="bg-black border border-white/30 p-4 cursor-pointer hover:bg-black/80 transition-colors"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-lg bg-black border border-white/30 flex items-center justify-center">
+                          <DownloadIcon size={20} className="text-white" />
+                        </div>
+                        <div>
+                          <div className="text-white font-medium mb-1">链上充值</div>
+                          <div className="text-white/50 text-xs">向您的MGBX账户充值数字货币</div>
+                        </div>
+                      </div>
+                      <ChevronRight className="w-5 h-5 text-white/40" />
+                    </div>
+                  </Card>
+                </div>
+
+                {/* 没有数字资产 */}
+                <div>
+                  <h3 className="text-white/70 text-sm mb-3">没有数字资产</h3>
+                  <Card
+                    onClick={() => {
+                      setShowDepositModal(false)
+                      navigate('/c2c')
+                    }}
+                    className="bg-black border border-white/30 p-4 cursor-pointer hover:bg-black/80 transition-colors"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-lg bg-black border border-white/30 flex items-center justify-center">
+                          <UsersIcon size={20} className="text-white" />
+                        </div>
+                        <div>
+                          <div className="text-white font-medium mb-1">C2C买币</div>
+                          <div className="text-white/50 text-xs">价格从优,点对点交易,支持本地支付</div>
+                        </div>
+                      </div>
+                      <ChevronRight className="w-5 h-5 text-white/40" />
+                    </div>
+                  </Card>
+                </div>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

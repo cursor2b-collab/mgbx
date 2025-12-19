@@ -20,6 +20,7 @@ import {
 import { toast } from 'sonner'
 import { useAuth } from '../hooks/useAuth'
 import { hzUserService, hzWithdrawService, hzWithdrawBankService, type HzWithdraw, type HzWithdrawBank } from '../services/hzDatabase'
+import { DotSpinner } from './DotSpinner'
 
 // 币种类型
 interface CryptoAsset {
@@ -341,9 +342,8 @@ export function WithdrawPage() {
           <TabsContent value="withdraw" className="space-y-6">
             {assetsLoading ? (
               <Card className="bg-white/5 border-white/10">
-                <div className="p-12 text-center space-y-4">
-                  <div className="w-12 h-12 mx-auto border-4 border-[#A3F030] border-t-transparent rounded-full animate-spin" />
-                  <p className="text-white/50">正在加载可提现资产...</p>
+                <div className="p-12 text-center">
+                  <DotSpinner />
                 </div>
               </Card>
             ) : assets.length === 0 ? (
@@ -559,9 +559,16 @@ export function WithdrawPage() {
           <TabsContent value="history" className="space-y-4">
             {historyLoading ? (
               <Card className="bg-white/5 border-white/10">
-                <div className="p-12 text-center space-y-4">
-                  <div className="w-12 h-12 mx-auto border-4 border-[#A3F030] border-t-transparent rounded-full animate-spin" />
-                  <p className="text-white/50">正在加载提现记录...</p>
+                <div className="p-12 text-center">
+                  <img 
+                    src="/logo.1730b8a9.gif" 
+                    alt="Loading..." 
+                    style={{
+                      maxWidth: '150px',
+                      height: 'auto',
+                      margin: '0 auto'
+                    }}
+                  />
                 </div>
               </Card>
             ) : withdrawals.length === 0 ? (

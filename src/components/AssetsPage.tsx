@@ -254,6 +254,7 @@ export function AssetsPage() {
   const [hideBalance, setHideBalance] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [filterType, setFilterType] = useState<'all' | 'deposit' | 'withdraw' | 'trade'>('all')
+  const [isNavigatingToDeposit, setIsNavigatingToDeposit] = useState(false)
 
   // 计算总资产
   const totalAssets = assets.reduce((sum, asset) => sum + asset.usdValue, 0)
@@ -484,8 +485,14 @@ export function AssetsPage() {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
-          <div className="w-16 h-16 border-4 border-[#A3F030] border-t-transparent rounded-full animate-spin" />
-          <p className="text-white/50">加载中...</p>
+          <img 
+            src="/logo.1730b8a9.gif" 
+            alt="Loading..." 
+            style={{
+              maxWidth: '200px',
+              height: 'auto'
+            }}
+          />
         </div>
       </div>
     )
@@ -528,7 +535,12 @@ export function AssetsPage() {
               {/* 快捷操作按钮 */}
               <div className="grid grid-cols-2 gap-3 pt-4">
                 <Button 
-                  onClick={() => navigate('/deposit')}
+                  onClick={() => {
+                    setIsNavigatingToDeposit(true)
+                    setTimeout(() => {
+                      navigate('/deposit/legacy')
+                    }, 500)
+                  }}
                   className="bg-[#A3F030] hover:bg-[#8FD622] text-black h-11"
                 >
                   <Download className="w-4 h-4 mr-2" />
@@ -798,6 +810,23 @@ export function AssetsPage() {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* 充值页面加载动画 */}
+      {isNavigatingToDeposit && (
+        <div 
+          className="fixed inset-0 bg-black z-[9999] flex items-center justify-center"
+          style={{ zIndex: 9999 }}
+        >
+          <img
+            src="/logo.1730b8a9.gif"
+            alt="Loading..."
+            style={{
+              maxWidth: '200px',
+              height: 'auto'
+            }}
+          />
+        </div>
+      )}
 
       {/* 移动端底部导航 */}
       <MobileBottomNav />

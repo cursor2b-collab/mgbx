@@ -20,6 +20,7 @@ import {
   Search
 } from 'lucide-react'
 import { toast } from 'sonner'
+import { DotSpinner } from './DotSpinner'
 
 // 币种类型
 interface CryptoAsset {
@@ -206,7 +207,7 @@ export function DepositPage() {
           <TabsContent value="deposit" className="space-y-6">
             {/* 选择币种 */}
             {!selectedAsset ? (
-              <Card className="bg-white/5 border-white/10">
+              <Card className="bg-black border-white/30">
                 <div className="p-6">
                   <h3 className="text-white font-semibold mb-4">选择充值币种</h3>
                   
@@ -225,8 +226,7 @@ export function DepositPage() {
                   {/* 币种列表 */}
                   {assetsLoading ? (
                     <div className="text-center py-8">
-                      <div className="w-8 h-8 mx-auto border-4 border-[#A3F030] border-t-transparent rounded-full animate-spin mb-2" />
-                      <p className="text-white/50 text-sm">加载币种中...</p>
+                      <DotSpinner />
                     </div>
                   ) : filteredAssets.length === 0 ? (
                     <div className="text-center py-8">
@@ -238,7 +238,7 @@ export function DepositPage() {
                         <div
                           key={asset.symbol}
                           onClick={() => setSelectedAsset(asset)}
-                          className="flex items-center gap-4 p-4 bg-white/5 rounded-lg hover:bg-white/10 transition-all cursor-pointer"
+                          className="flex items-center gap-4 p-4 bg-black border border-white/30 rounded-lg hover:bg-black/80 transition-all cursor-pointer"
                         >
                           <img src={asset.icon} alt={asset.symbol} className="w-10 h-10 rounded-full object-cover" onError={(e) => {
                             // 如果图片加载失败，使用默认图标
@@ -400,9 +400,16 @@ export function DepositPage() {
           <TabsContent value="history" className="space-y-4">
             {historyLoading ? (
               <Card className="bg-white/5 border-white/10">
-                <div className="p-12 text-center space-y-4">
-                  <div className="w-12 h-12 mx-auto border-4 border-[#A3F030] border-t-transparent rounded-full animate-spin" />
-                  <p className="text-white/50">加载充值记录中...</p>
+                <div className="p-12 text-center">
+                  <img 
+                    src="/logo.1730b8a9.gif" 
+                    alt="Loading..." 
+                    style={{
+                      maxWidth: '150px',
+                      height: 'auto',
+                      margin: '0 auto'
+                    }}
+                  />
                 </div>
               </Card>
             ) : deposits.length === 0 ? (

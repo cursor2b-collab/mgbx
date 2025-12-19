@@ -152,3 +152,6 @@ tail -20 /www/wwwlogs/1568game.com.error.log
 3. Nginx配置文件内容
 
 
+
+
+

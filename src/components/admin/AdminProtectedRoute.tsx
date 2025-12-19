@@ -89,10 +89,22 @@ export function AdminProtectedRoute({ children }: AdminProtectedRouteProps) {
   if (isLoading) {
     console.log('AdminProtectedRoute: 显示加载中...');
     return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-12 h-12 border-4 border-[#A3F030] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-gray-400">验证身份中...</p>
+      <div style={{
+        minHeight: '100vh',
+        backgroundColor: '#000000',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center'
+      }}>
+        <div style={{ textAlign: 'center' }}>
+          <img 
+            src="/logo.1730b8a9.gif" 
+            alt="Loading..." 
+            style={{
+              maxWidth: '200px',
+              height: 'auto'
+            }}
+          />
         </div>
       </div>
     );

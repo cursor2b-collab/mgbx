@@ -106,3 +106,6 @@ php artisan tinker
 4. 确认Laravel版本与PHP版本兼容
 
 
+
+
+

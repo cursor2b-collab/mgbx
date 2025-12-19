@@ -285,8 +285,8 @@ export function AuthPage() {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                padding: isMobile ? '24px 16px' : '32px',
-                paddingTop: isMobile ? '48px' : undefined,
+                padding: isMobile ? '0px 16px 24px' : '32px',
+                paddingTop: isMobile ? '0px' : undefined,
                 backgroundColor: '#000000',
                 minHeight: isMobile ? 'auto' : '100%'
               }}
@@ -296,7 +296,7 @@ export function AuthPage() {
               maxWidth: isMobile ? '100%' : '448px',
               padding: isMobile ? '0' : '0'
             }}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: isMobile ? '20px' : '24px' }}>
                 <h1 style={{
                   fontSize: 'clamp(2rem, 5vw, 3rem)',
                   fontWeight: 600,
@@ -1026,7 +1026,7 @@ export function AuthPage() {
         </AnimatePresence>
       </div>
       </div>
-      {windowHeight >= 800 && (
+      {windowHeight >= 800 && !isMobile && (
         <div style={{
           flexShrink: 1,
           minHeight: 0

@@ -113,3 +113,6 @@ UPDATE admin SET password = MD5('123456') WHERE username = 'admin';
 4. 测试数据库连接是否正常
 
 
+
+
+

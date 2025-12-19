@@ -137,3 +137,6 @@ kill -HUP $(ps aux | grep "nginx: master process" | grep -v grep | awk '{print $
 **域名**: 1568game.com
 
 
+
+
+

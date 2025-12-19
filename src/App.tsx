@@ -18,6 +18,8 @@ import { MobileTradingPage } from './components/MobileTradingPage'
 import { MarketsPage } from './components/MarketsPage'
 import { AssetsPage } from './components/AssetsPage'
 import { DepositPage } from './components/DepositPage'
+import { C2CBuyPage } from './components/C2CBuyPage'
+import { C2CCreateOrderPage } from './components/C2CCreateOrderPage'
 import { WithdrawPage } from './components/WithdrawPage'
 import { AssetDetailPage } from './components/AssetDetailPage'
 import { TransactionDetailPage } from './components/TransactionDetailPage'
@@ -149,9 +151,39 @@ export default function App() {
             } 
           />
           
-          {/* 存款页 - 存款界面 */}
+          {/* C2C买币页 - 使用新的C2C买币页面 */}
           <Route 
             path="/deposit" 
+            element={
+              <ProtectedRoute>
+                <C2CBuyPage />
+              </ProtectedRoute>
+            } 
+          />
+          
+          {/* C2C买币页 - 直接路由 */}
+          <Route 
+            path="/c2c" 
+            element={
+              <ProtectedRoute>
+                <C2CBuyPage />
+              </ProtectedRoute>
+            } 
+          />
+          
+          {/* C2C创建挂单页 */}
+          <Route 
+            path="/c2c/create-order" 
+            element={
+              <ProtectedRoute>
+                <C2CCreateOrderPage />
+              </ProtectedRoute>
+            } 
+          />
+          
+          {/* 传统充值页 - 保留作为备用 */}
+          <Route 
+            path="/deposit/legacy" 
             element={
               <ProtectedRoute>
                 <DepositPage />
